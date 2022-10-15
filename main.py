@@ -1,24 +1,18 @@
-import logging
 import asyncio
 
 from telebot.async_telebot import AsyncTeleBot
 
-import utils.settings as settings
+import utils.settings as settings, logging
 from utils.db import User, Payment, Notification
 
-logging.basicConfig(
-    filename='log.log',
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%m/%d/%Y %H:%M:%S',
-    level=logging.DEBUG
-)
+logger = logging.getLogger(__name__)
 
 bot = AsyncTeleBot(settings.API_KEY)
 
 
 @bot.message_handler(commands=['help', 'start'])
 async def start(message):
-    logging.debug(f'User chose /start command')
+    logger.debug(f'User chose /start command')
     await bot.reply_to(message, 'Hello there!')
 
 
