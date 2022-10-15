@@ -20,9 +20,10 @@ class User(BaseModel):
 
 class Payment(BaseModel):
     id = AutoField()
+    name = CharField(unique=True)
     description = CharField()
     price = FloatField()
-    payment_date = DateField(default=date.today())
+    date = DateField(default=date.today())
     user = ForeignKeyField(User, backref='payments', on_delete='cascade')
 
 
