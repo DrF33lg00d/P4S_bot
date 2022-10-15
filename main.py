@@ -4,6 +4,7 @@ import asyncio
 from telebot.async_telebot import AsyncTeleBot
 
 import utils.settings as settings
+from utils.db import User, Payment, Notification
 
 logging.basicConfig(
     filename='log.log',
@@ -11,7 +12,6 @@ logging.basicConfig(
     datefmt='%m/%d/%Y %H:%M:%S',
     level=logging.DEBUG
 )
-
 
 bot = AsyncTeleBot(settings.API_KEY)
 
