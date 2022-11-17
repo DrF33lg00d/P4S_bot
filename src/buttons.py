@@ -4,8 +4,8 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 class Button:
     rename = 'Изменить имя'
     payments = 'Показать список сервисов'
-    add_new_payment = 'Добавить новый сервис по оплате'
-    change_payment = 'Изменить информацию'
+    add_new_payment = 'Добавить'
+    change_payment = 'Изменить'
     delete_payment = 'Удалить'
     notifications = 'Список уведомлений'
     add_new_notification = 'Добавить уведомление'
@@ -23,12 +23,13 @@ def get_main_markup() -> ReplyKeyboardMarkup:
 
 
 def get_payments_markup() -> ReplyKeyboardMarkup:
-    markup = ReplyKeyboardMarkup(row_width=5)
+    markup = ReplyKeyboardMarkup(row_width=2)
     buttons = [
+        KeyboardButton(Button.payments),
         KeyboardButton(Button.add_new_payment),
         KeyboardButton(Button.change_payment),
         KeyboardButton(Button.delete_payment),
-        KeyboardButton(Button.notifications),
+        KeyboardButton(Button.notifications.replace(' ', '\n')),
         KeyboardButton(Button.move_back),
     ]
     markup.add(*buttons)
