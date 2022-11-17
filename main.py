@@ -7,7 +7,7 @@ from telebot.asyncio_storage import StateMemoryStorage
 from telebot.asyncio_handler_backends import State, StatesGroup
 
 import utils.settings as settings, logging
-from src.buttons import get_main_markup, Button
+from src.buttons import get_main_markup, get_payments_markup, Button
 from utils.db import User, Payment, Notification
 
 logger = logging.getLogger(__name__)
@@ -67,12 +67,16 @@ async def change_name(message):
     await main_buttons(message.chat.id)
 
 
+@bot.message_handler(state=PaymentStates.payment_list)
 @bot.message_handler(text_contains=[Button.payments])
 async def payments_list(message):
     logger.debug(f'User select payments list')
+    payments = Payment.select().join(User).where(User.telegram_id == message.from_user.id).order_by(Payment.id)
+    result = [f'{count+1}.\t{payment.description}' for count, payment in enumerate(payments)]
     await bot.send_message(
         message.chat.id,
-        'Твой список платежей:'
+        '\n'.join(['Твой список платежей:'] + result),
+        reply_markup=get_payments_markup()
     )
     await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
 
