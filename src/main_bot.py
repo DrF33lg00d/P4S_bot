@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from telebot.async_telebot import AsyncTeleBot
 from telebot import types
@@ -8,7 +9,7 @@ from telebot.asyncio_storage import StateMemoryStorage
 from utils import settings
 from src.buttons import get_main_markup, get_payments_markup, Button
 from src.username import ChangeNameStates, create_or_update_user, change_username
-from src.payments import PaymentStates, get_payment_list
+from src.payments import PaymentStates, get_payment_list, add_payment
 from utils.db import User, Payment, Notification
 
 logger = settings.logging.getLogger(__name__)
@@ -36,7 +37,7 @@ async def main_buttons(chat_id: int) -> None:
 
 
 @bot.message_handler(text_contains=[Button.rename])
-async def want_change_name(message):
+async def pre_change_name(message):
     logger.debug(f'User wants change username')
     await bot.send_message(
         message.chat.id,
@@ -58,7 +59,6 @@ async def change_name(message):
     await main_buttons(message.chat.id)
 
 
-@bot.message_handler(state=PaymentStates.payment_list)
 @bot.message_handler(text_contains=[Button.payments])
 async def payments_list(message):
     logger.debug(f'User select payments list')
@@ -69,10 +69,44 @@ async def payments_list(message):
     if payments:
         bot_text = '\n'.join(['Твой список платежей:'] + payments)
     else:
-        bot_text = 'Твой список платежей пуст.'
+        bot_text = 'Твой список платежей пуст'
     await bot.send_message(
         message.chat.id,
         bot_text,
+        reply_markup=get_payments_markup()
+    )
+    await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
+
+
+@bot.message_handler(state=PaymentStates.payment_list)
+@bot.message_handler(text_contains=[Button.add_new_payment])
+async def pre_payment_add(message):
+    bot_text = [
+        'Добавьте платёж в следующем формате:',
+        'Интернет,Оплата за интернет,650,2020-01-07',
+        '',
+        'Примеры:',
+        'Мобильный интернет,Оплата за мобильный интернет,450.35,2020-01-07',
+        'Я.Плюс,Оплата за подписку Яндекс.Плюс,300,2020-01-07',
+    ]
+    await bot.reply_to(
+        message,
+        '\n'.join(bot_text),
+        reply_markup=get_payments_markup(),
+    )
+    await bot.set_state(message.from_user.id, PaymentStates.payment_add, message.chat.id)
+
+
+@bot.message_handler(state=PaymentStates.payment_add)
+async def payment_add(message):
+    name, description, price, date_payment = message.text.replace(', ', ',').split(',')
+    date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
+    price = float(price)
+    payment = add_payment(message.from_user.id, name, description, price, date_payment)
+    logger.debug(f'Add payment {name} for user {payment.user.username}')
+    await bot.send_message(
+        message.chat.id,
+        'Новая оплата добавлена!',
         reply_markup=get_payments_markup()
     )
     await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
