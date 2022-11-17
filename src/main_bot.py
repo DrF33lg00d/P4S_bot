@@ -7,7 +7,7 @@ from telebot.asyncio_storage import StateMemoryStorage
 
 from utils import settings
 from src.buttons import get_main_markup, get_payments_markup, Button
-from src.username import ChangeNameStates, create_or_update_user
+from src.username import ChangeNameStates, create_or_update_user, change_username
 from src.payments import PaymentStates
 from utils.db import User, Payment, Notification
 
@@ -48,10 +48,8 @@ async def want_change_name(message):
 
 @bot.message_handler(state=ChangeNameStates.change_name)
 async def change_name(message):
-    user = User.get_or_create(telegram_id=message.from_user.id)[0]
-    logger.debug(f'User {user.username} change username to {message.text}')
-    user.username = message.text
-    user.save()
+    logger.debug(f'User change username to {message.text}')
+    change_username(message.from_user.id, message.text)
     await bot.send_message(
         message.chat.id,
         f'Отлично, в случае чего буду к тебе так обращаться!'
