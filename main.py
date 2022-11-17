@@ -16,7 +16,7 @@ bot.add_custom_filter(TextContainsFilter())
 bot.add_custom_filter(StateFilter(bot))
 
 
-class MyStates(StatesGroup):
+class ChangeNameStates(StatesGroup):
     change_name = State()
 
 
@@ -54,10 +54,10 @@ async def want_change_name(message):
         'Ну-ка, и как ты хочешь называться теперь?',
         reply_markup=types.ReplyKeyboardRemove()
     )
-    await bot.set_state(message.from_user.id, MyStates.change_name, message.chat.id)
+    await bot.set_state(message.from_user.id, ChangeNameStates.change_name, message.chat.id)
 
 
-@bot.message_handler(state=MyStates.change_name)
+@bot.message_handler(state=ChangeNameStates.change_name)
 async def change_name(message):
     user = User.get_or_create(telegram_id=message.from_user.id)[0]
     logger.debug(f'User {user.username} change username to {message.text}')
@@ -69,6 +69,9 @@ async def change_name(message):
     )
     await bot.delete_state(message.from_user.id, message.chat.id)
     await main_buttons(message.chat.id)
+
+
+
 
 
 async def main_buttons(chat_id: int) -> None:
