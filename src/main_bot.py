@@ -8,7 +8,7 @@ from telebot.asyncio_storage import StateMemoryStorage
 from utils import settings
 from src.buttons import get_main_markup, get_payments_markup, Button
 from src.username import ChangeNameStates, create_or_update_user, change_username
-from src.payments import PaymentStates
+from src.payments import PaymentStates, get_payment_list
 from utils.db import User, Payment, Notification
 
 logger = settings.logging.getLogger(__name__)
@@ -62,11 +62,17 @@ async def change_name(message):
 @bot.message_handler(text_contains=[Button.payments])
 async def payments_list(message):
     logger.debug(f'User select payments list')
-    payments = Payment.select().join(User).where(User.telegram_id == message.from_user.id).order_by(Payment.id)
-    result = [f'{count + 1}.\t{payment.description}' for count, payment in enumerate(payments)]
+    payments = [
+        f'{count + 1}.\t{payment.description}'
+        for count, payment in enumerate(get_payment_list(message.from_user.id))
+    ]
+    if payments:
+        bot_text = '\n'.join(['Твой список платежей:'] + payments)
+    else:
+        bot_text = 'Твой список платежей пуст.'
     await bot.send_message(
         message.chat.id,
-        '\n'.join(['Твой список платежей:'] + result),
+        bot_text,
         reply_markup=get_payments_markup()
     )
     await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
