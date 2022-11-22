@@ -35,3 +35,9 @@ def add_payment(
         user_id=user,
     )
     return payment
+
+
+def delete_payment(user_id: int, payment_number: int) -> bool:
+    user = User.get(telegram_id=user_id)
+    payment_item = get_payment_list(user.telegram_id)[payment_number-1]
+    return bool(payment_item.delete_instance())
