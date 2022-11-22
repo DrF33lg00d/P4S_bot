@@ -143,3 +143,8 @@ async def payment_delete(message):
         reply_markup=get_payments_markup(),
     )
     await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
+
+
+@bot.message_handler(state=PaymentStates.payment_list, text_contains=[Button.move_back])
+async def move_back(message):
+    await main_buttons(message.chat.id)
