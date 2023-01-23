@@ -29,7 +29,7 @@ def get_payments_markup() -> ReplyKeyboardMarkup:
         KeyboardButton(Button.add_new_payment),
         KeyboardButton(Button.change_payment),
         KeyboardButton(Button.delete_payment),
-        KeyboardButton(Button.notifications.replace(' ', '\n')),
+        KeyboardButton(Button.notifications),
         KeyboardButton(Button.move_back),
     ]
     markup.add(*buttons)

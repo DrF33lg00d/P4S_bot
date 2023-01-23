@@ -10,6 +10,7 @@ from utils import settings
 from src.buttons import get_main_markup, get_payments_markup, Button
 from src.username import ChangeNameStates, create_or_update_user, change_username
 from src.payments import PaymentStates, get_payment_list, add_payment, delete_payment
+from src.notifications import NotificationStates, get_notification_list
 from utils.db import User, Payment, Notification
 
 logger = settings.logging.getLogger(__name__)
@@ -148,3 +149,36 @@ async def payment_delete(message):
 @bot.message_handler(state=PaymentStates.payment_list, text_contains=[Button.move_back])
 async def move_back(message):
     await main_buttons(message.chat.id)
+
+
+@bot.message_handler(state=PaymentStates.payment_list, text_contains=[Button.notifications])
+async def pre_notification_list(message):
+    await bot.reply_to(
+        message,
+        'Напиши номер сервиса, чтобы посмотреть список нотификаций',
+        reply_markup=types.ForceReply(),
+    )
+    await bot.set_state(message.from_user.id, NotificationStates.notification_list, message.chat.id)
+
+
+@bot.message_handler(state=NotificationStates.notification_list, is_reply=True)
+async def notification_list(message):
+    bot_text = list()
+    notification_list = list()
+    try:
+        payment_number = int(message.text) - 1
+        notification_list = get_notification_list(message.from_user.id, payment_number)
+        bot_text = [f'{index+1}.\t{notif.day_before_payment} день/дней' for index, notif in enumerate(notification_list)]
+    except ValueError:
+        bot_text.append('Ошибка! Некорректный номер сервиса')
+    except IndexError:
+        bot_text.append('Ошибка! Такого номера сервиса нет')
+    if not notification_list:
+        bot_text.append('Уведомления отсутствуют')
+
+    await bot.send_message(
+        message.chat.id,
+        '\n'.join(bot_text),
+        reply_markup=get_payments_markup(),
+    )
+    await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
