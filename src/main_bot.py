@@ -71,7 +71,7 @@ async def change_name(message):
 
 @bot.message_handler(state=MainStates.main_menu, text_contains=[Button.payments])
 @bot.message_handler(state=PaymentStates.select, text_contains=[Button.payments])
-@bot.message_handler(state=PaymentStates.payment_list, text_contains=[Button.move_back])
+@bot.message_handler(state=PaymentStates.list, text_contains=[Button.move_back])
 async def payments_list(message):
     logger.debug(f'User select payments list')
     payments = [
@@ -105,10 +105,10 @@ async def pre_payment_add(message):
         '\n'.join(bot_text),
         reply_markup=get_payments_markup(),
     )
-    await bot.set_state(message.from_user.id, PaymentStates.payment_add, message.chat.id)
+    await bot.set_state(message.from_user.id, PaymentStates.add, message.chat.id)
 
 
-@bot.message_handler(state=PaymentStates.payment_add)
+@bot.message_handler(state=PaymentStates.add)
 async def payment_add(message):
     name, description, price, date_payment = message.text.replace(', ', ',').split(',')
     date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
@@ -120,7 +120,7 @@ async def payment_add(message):
         'Новая оплата добавлена!',
         reply_markup=get_payments_markup()
     )
-    await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
+    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
 
 
 @bot.message_handler(state=PaymentStates.select, text_contains=[Button.delete_payment])
@@ -130,10 +130,10 @@ async def pre_payment_delete(message):
         'Напиши номер сервиса, который хочешь удалить',
         reply_markup=types.ForceReply(),
     )
-    await bot.set_state(message.from_user.id, PaymentStates.payment_delete, message.chat.id)
+    await bot.set_state(message.from_user.id, PaymentStates.delete, message.chat.id)
 
 
-@bot.message_handler(state=PaymentStates.payment_delete, is_reply=True)
+@bot.message_handler(state=PaymentStates.delete, is_reply=True)
 async def payment_delete(message):
     bot_text = list()
     try:
@@ -153,7 +153,7 @@ async def payment_delete(message):
         '\n'.join(bot_text),
         reply_markup=get_payments_markup(),
     )
-    await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
+    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
 
 
 @bot.message_handler(state=PaymentStates.select, text_contains=[Button.move_back])
@@ -192,7 +192,7 @@ async def notification_list(message):
             '\n'.join(bot_text),
             reply_markup=get_payments_markup(),
         )
-        await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
+        await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
     else:
         selected_payment[message.from_user.id] = payment.id
         if notification_list:
@@ -211,6 +211,6 @@ async def notification_list(message):
 async def move_back_from_notif(message):
     if selected_payment.get(message.from_user.id, False):
         selected_payment.pop(message.from_user.id)
-    await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
+    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
     # await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
     await payments_list(message)

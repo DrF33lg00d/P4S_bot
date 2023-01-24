@@ -4,10 +4,10 @@ from utils.db import User, Payment
 
 
 class PaymentStates(StatesGroup):
-    payment_list = State()
-    payment_add = State()
+    list = State()
+    add = State()
     select = State()
-    payment_delete = State()
+    delete = State()
 
 
 def get_payment_list(user_id: int) -> list[Payment]:
