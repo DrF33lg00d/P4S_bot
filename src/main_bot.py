@@ -169,10 +169,10 @@ async def pre_notification_list(message):
         'Напиши номер сервиса, чтобы посмотреть список нотификаций',
         reply_markup=types.ForceReply(),
     )
-    await bot.set_state(message.from_user.id, NotificationStates.notification_select, message.chat.id)
+    await bot.set_state(message.from_user.id, NotificationStates.select, message.chat.id)
 
 
-@bot.message_handler(state=NotificationStates.notification_select)
+@bot.message_handler(state=NotificationStates.select)
 async def notification_list(message):
     bot_text = list()
     notification_list = list()
@@ -204,10 +204,10 @@ async def notification_list(message):
             '\n'.join(bot_text),
             reply_markup=get_notifications_markup(),
         )
-        await bot.set_state(message.from_user.id, NotificationStates.notification_list, message.chat.id)
+        await bot.set_state(message.from_user.id, NotificationStates.list, message.chat.id)
 
 
-@bot.message_handler(state=NotificationStates.notification_list, text_contains=[Button.move_back])
+@bot.message_handler(state=NotificationStates.list, text_contains=[Button.move_back])
 async def move_back_from_notif(message):
     if selected_payment.get(message.from_user.id, False):
         selected_payment.pop(message.from_user.id)

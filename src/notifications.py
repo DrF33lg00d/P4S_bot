@@ -4,11 +4,10 @@ from utils.db import Payment, Notification
 
 
 class NotificationStates(StatesGroup):
-    notification_select = State()
-    notification_list = State()
-    notification_add = State()
-    notification_change = State()
-    notification_delete = State()
+    select = State()
+    list = State()
+    add = State()
+    delete = State()
 
 
 def get_notification_list(payment: Payment) -> list[Notification]:
