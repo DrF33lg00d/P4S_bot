@@ -1,7 +1,6 @@
 from telebot.asyncio_handler_backends import State, StatesGroup
 
 from utils.db import Payment, Notification
-from src.payments import get_payment_list
 
 
 class NotificationStates(StatesGroup):

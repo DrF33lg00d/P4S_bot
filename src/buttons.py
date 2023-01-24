@@ -34,3 +34,14 @@ def get_payments_markup() -> ReplyKeyboardMarkup:
     ]
     markup.add(*buttons)
     return markup
+
+
+def get_notifications_markup() -> ReplyKeyboardMarkup:
+    markup = ReplyKeyboardMarkup(row_width=3)
+    buttons = [
+        KeyboardButton(Button.add_new_notification),
+        KeyboardButton(Button.delete_notification),
+        KeyboardButton(Button.move_back),
+    ]
+    markup.add(*buttons)
+    return markup

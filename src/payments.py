@@ -6,7 +6,7 @@ from utils.db import User, Payment
 class PaymentStates(StatesGroup):
     payment_list = State()
     payment_add = State()
-    payment_change = State()
+    select = State()
     payment_delete = State()
 
 
