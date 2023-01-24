@@ -166,8 +166,8 @@ async def notification_list(message):
     bot_text = list()
     notification_list = list()
     try:
-        payment_number = int(message.text) - 1
-        notification_list = get_notification_list(message.from_user.id, payment_number)
+        payment = get_payment_list(message.from_user.id)[int(message.text)-1]
+        notification_list = get_notification_list(payment)
         bot_text = [f'{index+1}.\t{notif.day_before_payment} день/дней' for index, notif in enumerate(notification_list)]
     except ValueError:
         bot_text.append('Ошибка! Некорректный номер сервиса')

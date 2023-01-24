@@ -1,6 +1,6 @@
 from telebot.asyncio_handler_backends import State, StatesGroup
 
-from utils.db import User, Payment, Notification
+from utils.db import Payment, Notification
 from src.payments import get_payment_list
 
 
@@ -12,8 +12,7 @@ class NotificationStates(StatesGroup):
     notification_delete = State()
 
 
-def get_notification_list(user_id: int, payment_number: int) -> list[Notification]:
-    payment = get_payment_list(user_id)[payment_number]
+def get_notification_list(payment: Payment) -> list[Notification]:
     notifications = (Notification.select()
                 .join(Payment)
                 .where(Payment.id == payment.id)
