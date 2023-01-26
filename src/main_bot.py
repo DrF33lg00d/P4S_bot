@@ -13,7 +13,7 @@ from utils import settings
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
 from src.username import create_or_update_user, change_username
 from src.payments import PaymentStates, get_payment_list, add_payment, delete_payment
-from src.notifications import NotificationStates, get_notification_list, add_notification
+from src.notifications import NotificationStates, get_notification_list, add_notification, delete_notification
 from utils.db import User, Payment, Notification
 
 logger = settings.logging.getLogger(__name__)
@@ -244,9 +244,43 @@ async def notification_add(message):
         )
         await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
         return
+    selected_payment.get(message.from_user.id)['timestamp'] = time.time()
     await bot.send_message(
             message.chat.id,
             'Уведомление добавлено!',
+            reply_markup=get_notifications_markup(),
+    )
+    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+
+
+@bot.message_handler(state=NotificationStates.list, text_contains=[Button.delete_notification])
+async def pre_notification_delete(message):
+    await bot.reply_to(
+        message,
+        'Какое уведомление из списка хочешь удалить?',
+        reply_markup=types.ForceReply(),
+    )
+    await bot.set_state(message.from_user.id, NotificationStates.delete, message.chat.id)
+
+
+@bot.message_handler(state=NotificationStates.delete)
+async def notification_delete(message):
+    try:
+        payment: Payment = selected_payment.get(message.from_user.id)['payment']
+        notification_number = int(message.text) - 1
+        assert delete_notification(payment, notification_number)
+    except (TypeError, IndexError, TypeError, AssertionError):
+        await bot.send_message(
+            message.chat.id,
+            'Ошибка удаления уведомления, попробуйте ещё раз',
+            reply_markup=get_notifications_markup(),
+        )
+        await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+        return
+    selected_payment.get(message.from_user.id)['timestamp'] = time.time()
+    await bot.send_message(
+            message.chat.id,
+            'Уведомление удалено!',
             reply_markup=get_notifications_markup(),
     )
     await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
