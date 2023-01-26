@@ -1,3 +1,7 @@
+from contextlib import suppress
+
+import peewee
+
 from utils.db import User
 
 
@@ -7,7 +11,8 @@ def create_or_update_user(telegram_id: int, username: str):
     }
     if username:
         user.update({'username': username})
-    User.get_or_create(**user)
+    with suppress(peewee.IntegrityError) as unique_error:
+        User.get_or_create(**user)
     del user
 
 
