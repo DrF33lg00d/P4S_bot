@@ -5,11 +5,9 @@ class Button:
     rename = 'Изменить имя'
     payments = 'Показать список сервисов'
     add_new_payment = 'Добавить'
-    change_payment = 'Изменить'
     delete_payment = 'Удалить'
     notifications = 'Список уведомлений'
-    add_new_notification = 'Добавить уведомление'
-    change_notification = 'Изменить уведомление'
+    add_notification = 'Добавить уведомление'
     delete_notification = 'Удалить'
     move_back = 'Вернуться'
 
@@ -27,7 +25,6 @@ def get_payments_markup() -> ReplyKeyboardMarkup:
     buttons = [
         KeyboardButton(Button.payments),
         KeyboardButton(Button.add_new_payment),
-        KeyboardButton(Button.change_payment),
         KeyboardButton(Button.delete_payment),
         KeyboardButton(Button.notifications),
         KeyboardButton(Button.move_back),
@@ -39,7 +36,7 @@ def get_payments_markup() -> ReplyKeyboardMarkup:
 def get_notifications_markup() -> ReplyKeyboardMarkup:
     markup = ReplyKeyboardMarkup(row_width=3)
     buttons = [
-        KeyboardButton(Button.add_new_notification),
+        KeyboardButton(Button.add_notification),
         KeyboardButton(Button.delete_notification),
         KeyboardButton(Button.move_back),
     ]

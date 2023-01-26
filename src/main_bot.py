@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import datetime
 from collections import defaultdict
 
@@ -12,7 +13,7 @@ from utils import settings
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
 from src.username import create_or_update_user, change_username
 from src.payments import PaymentStates, get_payment_list, add_payment, delete_payment
-from src.notifications import NotificationStates, get_notification_list
+from src.notifications import NotificationStates, get_notification_list, add_notification
 from utils.db import User, Payment, Notification
 
 logger = settings.logging.getLogger(__name__)
@@ -22,7 +23,7 @@ bot.add_custom_filter(TextContainsFilter())
 bot.add_custom_filter(IsReplyFilter())
 bot.add_custom_filter(StateFilter(bot))
 
-selected_payment = defaultdict(int)
+selected_payment = defaultdict(dict)
 
 
 class MainStates(StatesGroup):
@@ -194,11 +195,14 @@ async def notification_list(message):
         )
         await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
     else:
-        selected_payment[message.from_user.id] = payment.id
+        selected_payment[message.from_user.id] = {
+            'payment': payment,
+            'timestamp': time.time()
+        }
         if notification_list:
-            bot_text.append('Уведомления отсутствуют')
+                        bot_text = [f'{index+1}.\t{notif.day_before_payment} день/дней' for index, notif in enumerate(notification_list)]
         else:
-            bot_text = [f'{index+1}.\t{notif.day_before_payment} день/дней' for index, notif in enumerate(notification_list)]
+            bot_text.append('Уведомления отсутствуют')
         await bot.send_message(
             message.chat.id,
             '\n'.join(bot_text),
@@ -209,8 +213,40 @@ async def notification_list(message):
 
 @bot.message_handler(state=NotificationStates.list, text_contains=[Button.move_back])
 async def move_back_from_notif(message):
-    if selected_payment.get(message.from_user.id, False):
+    if selected_payment.get(message.from_user.id):
         selected_payment.pop(message.from_user.id)
     await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
     # await bot.set_state(message.from_user.id, PaymentStates.payment_list, message.chat.id)
     await payments_list(message)
+
+
+@bot.message_handler(state=NotificationStates.list, text_contains=[Button.add_notification])
+async def pre_notification_add(message):
+    await bot.reply_to(
+        message,
+        'За сколько дней нужно уведомить тебя об оплате?',
+        reply_markup=types.ForceReply(),
+    )
+    await bot.set_state(message.from_user.id, NotificationStates.add, message.chat.id)
+
+
+@bot.message_handler(state=NotificationStates.add)
+async def notification_add(message):
+    try:
+        payment: Payment = selected_payment.get(message.from_user.id)['payment']
+        day_before_notification = int(message.text)
+        add_notification(payment, day_before_notification)
+    except (TypeError, IndexError, TypeError):
+        await bot.send_message(
+            message.chat.id,
+            'Ошибка добавления уведомления, попробуйте ещё раз',
+            reply_markup=get_notifications_markup(),
+        )
+        await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+        return
+    await bot.send_message(
+            message.chat.id,
+            'Уведомление добавлено!',
+            reply_markup=get_notifications_markup(),
+    )
+    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
