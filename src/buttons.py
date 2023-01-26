@@ -3,10 +3,10 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
 class Button:
     rename = 'Изменить имя'
-    payments = 'Показать список сервисов'
+    payments = 'Список сервисов'
+    notifications = 'Список уведомлений'
     add_new_payment = 'Добавить'
     delete_payment = 'Удалить'
-    notifications = 'Список уведомлений'
     add_notification = 'Добавить уведомление'
     delete_notification = 'Удалить'
     move_back = 'Вернуться'

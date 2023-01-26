@@ -4,7 +4,6 @@ from utils.db import Payment, Notification
 
 
 class NotificationStates(StatesGroup):
-    select = State()
     list = State()
     add = State()
     delete = State()
