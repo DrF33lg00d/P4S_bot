@@ -280,7 +280,8 @@ async def notification_list(message):
             'timestamp': time.time()
         }
         if notification_list:
-                        bot_text = [f'{index+1}.\t{notif.day_before_payment} день/дней' for index, notif in enumerate(notification_list)]
+            bot_text.append('Появление уведомлений к сервису за:')
+            bot_text = [f'{index+1}.\t{notif.day_before_payment} день/дней' for index, notif in enumerate(notification_list)]
         else:
             bot_text.append('Уведомления отсутствуют')
         await bot.send_message(
