@@ -18,22 +18,16 @@ from utils.db import User, Payment, Notification
 
 logger = settings.logging.getLogger(__name__)
 
-bot = AsyncTeleBot(settings.API_KEY, state_storage=StateMemoryStorage())
-bot.add_custom_filter(TextContainsFilter())
-bot.add_custom_filter(IsReplyFilter())
-bot.add_custom_filter(IsDigitFilter())
-bot.add_custom_filter(StateFilter(bot))
-
 selected_payment = defaultdict(dict)
-
+bot = settings.bot
 
 class MainStates(StatesGroup):
     main_menu = State()
     change_name = State()
 
 
-def run():
-    asyncio.run(bot.infinity_polling(skip_pending=True))
+async def run_bot():
+    await settings.bot.infinity_polling(skip_pending=True)
 
 
 @bot.message_handler(commands=['help', 'start'])
