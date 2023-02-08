@@ -3,72 +3,65 @@ import time
 from datetime import datetime
 from collections import defaultdict
 
-from telebot.async_telebot import AsyncTeleBot
-from telebot import types
-from telebot.asyncio_filters import TextContainsFilter, StateFilter, IsReplyFilter, IsDigitFilter
-from telebot.asyncio_storage import StateMemoryStorage
-from telebot.asyncio_handler_backends import State, StatesGroup
 
-from utils import settings
+from aiogram import executor, types
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
+from utils.settings import logging, bot, dp
+from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
 from src.username import create_or_update_user, change_username
-from src.payments import PaymentStates, get_payment_list, add_payment, delete_payment
-from src.notifications import NotificationStates, get_notification_list, add_notification, delete_notification
+from src.payments import get_payment_list, add_payment, delete_payment
+from src.notifications import get_notification_list, add_notification, delete_notification
 from utils.db import User, Payment, Notification
 
-logger = settings.logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 
 selected_payment = defaultdict(dict)
-bot = settings.bot
-
-class MainStates(StatesGroup):
-    main_menu = State()
-    change_name = State()
 
 
-async def run_bot():
-    await settings.bot.infinity_polling(skip_pending=True)
+def run_bot():
+    executor.start_polling(dp, skip_updates=True)
 
 
-@bot.message_handler(commands=['help', 'start'])
-async def start(message):
+@dp.message_handler(commands='start')
+async def start(message: types.Message):
     logger.debug(f'User {message.from_user.id} chose /start command')
     create_or_update_user(message.from_user.id, message.from_user.username)
-    await bot.reply_to(message, 'Hello there!')
+    await message.reply('Hello there!')
     await main_buttons(message)
 
-async def main_buttons(message) -> None:
-    logger.debug(f'Show user main buttons')
-    await bot.set_state(message.from_user.id, MainStates.main_menu, message.chat.id)
+async def main_buttons(message: types.Message):
     await bot.send_message(message.chat.id, 'Чего изволите?', reply_markup=get_main_markup())
 
 
-@bot.message_handler(state=MainStates.main_menu, text_contains=[Button.rename])
-async def pre_change_name(message):
+@dp.message_handler(commands=Button.rename)
+async def pre_change_name(message: types.Message):
     logger.debug(f'User wants change username')
-    await bot.send_message(
+    await MainStates.change_name.set()
+    await message.reply(
         message.chat.id,
         'Ну-ка, и как ты хочешь называться теперь?',
         reply_markup=types.ReplyKeyboardRemove()
     )
-    await bot.set_state(message.from_user.id, MainStates.change_name, message.chat.id)
 
 
-@bot.message_handler(state=MainStates.change_name)
-async def change_name(message):
+@dp.message_handler(state=MainStates.change_name)
+async def change_name(message: types.Message, state: FSMContext):
     logger.debug(f'User change username to {message.text}')
     change_username(message.from_user.id, message.text)
+    await state.finish()
     await bot.send_message(
         message.chat.id,
         f'Отлично, в случае чего буду к тебе так обращаться!'
     )
-    await bot.set_state(message.from_user.id, MainStates.main_menu, message.chat.id)
     await main_buttons(message.chat.id)
 
 
-@bot.message_handler(state=MainStates.main_menu, text_contains=[Button.payments])
-@bot.message_handler(state=PaymentStates.list, text_contains=[Button.payments])
-async def payments_list(message):
+@dp.message_handler(Text(contains=[Button.payments]))
+@dp.message_handler(Text(contains=[Button.payments]), state=PaymentStates.list)
+async def payments_list(message: types.Message):
     logger.debug(f'User select payments list')
     payments = [
         f'{count + 1}.\t{payment.description}'
@@ -83,11 +76,11 @@ async def payments_list(message):
         bot_text,
         reply_markup=get_payments_markup()
     )
-    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+    await PaymentStates.list.set()
 
 
-@bot.message_handler(state=PaymentStates.list, text_contains=[Button.add_new_payment])
-async def pre_payment_add(message):
+@dp.message_handler(Text(contains=[Button.add_new_payment]), state=PaymentStates.list)
+async def pre_payment_add(message: types.Message):
     bot_text = [
         'Добавьте платёж в следующем формате:',
         'Интернет,Оплата за интернет,650,2020-01-07',
@@ -96,16 +89,15 @@ async def pre_payment_add(message):
         'Мобильный интернет,Оплата за мобильный интернет,450.35,2020-01-07',
         'Я.Плюс,Оплата за подписку Яндекс.Плюс,300,2020-01-07',
     ]
-    await bot.reply_to(
-        message,
+    await message.reply(
         '\n'.join(bot_text),
         reply_markup=get_payments_markup(),
     )
-    await bot.set_state(message.from_user.id, PaymentStates.add, message.chat.id)
+    await PaymentStates.add.set()
 
 
-@bot.message_handler(state=PaymentStates.add)
-async def payment_add(message):
+@dp.message_handler(state=PaymentStates.add)
+async def payment_add(message: types.Message):
     name, description, price, date_payment = message.text.replace(', ', ',').split(',')
     date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
     price = float(price)
@@ -116,21 +108,21 @@ async def payment_add(message):
         'Новая оплата добавлена!',
         reply_markup=get_payments_markup()
     )
-    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+    await PaymentStates.list.set()
 
 
-@bot.message_handler(state=PaymentStates.list, text_contains=[Button.delete_payment])
-async def pre_payment_delete(message):
+@dp.message_handler(Text(contains=[Button.delete_payment]), state=PaymentStates.list)
+async def pre_payment_delete(message: types.Message):
     await bot.reply_to(
         message,
         'Напиши номер сервиса, который хочешь удалить',
         reply_markup=types.ForceReply(),
     )
-    await bot.set_state(message.from_user.id, PaymentStates.delete, message.chat.id)
+    await PaymentStates.delete.set()
 
 
-@bot.message_handler(state=PaymentStates.delete, is_reply=True)
-async def payment_delete(message):
+@dp.message_handler(IsReplyFilter(True), state=PaymentStates.delete)
+async def payment_delete(message: types.Message):
     bot_text = list()
     try:
         payment_number = int(message.text)
@@ -144,54 +136,50 @@ async def payment_delete(message):
     except IndexError:
         bot_text.append('Ошибка! Такого номера сервиса нет')
 
-    await bot.send_message(
-        message.chat.id,
+    await message.reply(
         '\n'.join(bot_text),
         reply_markup=get_payments_markup(),
     )
-    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+    await PaymentStates.list.set()
 
 
-@bot.message_handler(state=PaymentStates.list, text_contains=[Button.move_back])
-async def move_back(message):
+@dp.message_handler(Text(contains=[Button.move_back]), state=PaymentStates.list)
+async def move_back(message: types.Message, state: FSMContext):
+    await state.finish()
     await main_buttons(message)
 
 
-@bot.message_handler(state=NotificationStates.list, text_contains=[Button.move_back])
-async def move_back_to_payments(message):
+@dp.message_handler(Text(contains=[Button.move_back]), state=NotificationStates.list)
+async def move_back_to_payments(message: types.Message):
     await payments_list(message)
 
 
-@bot.message_handler(state=PaymentStates.list, text_contains=[Button.notifications])
-async def pre_notification_list(message):
-    await bot.reply_to(
-        message,
+@dp.message_handler(Text(contains=[Button.notifications]), state=PaymentStates.list)
+async def pre_notification_list(message: types.Message):
+    await message.reply(
         'Напиши номер сервиса, чтобы посмотреть список нотификаций',
         reply_markup=types.ForceReply(),
     )
-    await bot.set_state(message.from_user.id, PaymentStates.select, message.chat.id)
+    await PaymentStates.select.set()
 
-
-@bot.message_handler(state=NotificationStates.list, text_contains=[Button.move_back])
-async def move_back_from_notif(message):
+@dp.message_handler(Text(contains=[Button.move_back]), state=NotificationStates.list)
+async def move_back_from_notif(message: types.Message):
     if selected_payment.get(message.from_user.id):
         selected_payment.pop(message.from_user.id)
-    await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+    await PaymentStates.list.set()
     await payments_list(message)
 
-
-@bot.message_handler(state=NotificationStates.list, text_contains=[Button.add_notification])
-async def pre_notification_add(message):
-    await bot.reply_to(
-        message,
+@dp.message_handler(Text(contains=[Button.add_notification]), state=NotificationStates.list)
+async def pre_notification_add(message: types.Message):
+    await message.reply(
         'За сколько дней нужно уведомить тебя об оплате?',
         reply_markup=types.ForceReply(),
     )
-    await bot.set_state(message.from_user.id, NotificationStates.add, message.chat.id)
+    await NotificationStates.add.set()
 
 
-@bot.message_handler(state=NotificationStates.add)
-async def notification_add(message):
+@dp.message_handler(state=NotificationStates.add)
+async def notification_add(message: types.Message):
     try:
         payment: Payment = selected_payment.get(message.from_user.id)['payment']
         day_before_notification = int(message.text)
@@ -202,7 +190,7 @@ async def notification_add(message):
             'Ошибка добавления уведомления, попробуйте ещё раз',
             reply_markup=get_notifications_markup(),
         )
-        await bot.set_state(message.from_user.id, NotificationStates.list, message.chat.id)
+        await NotificationStates.list.set()
         return
     selected_payment.get(message.from_user.id)['timestamp'] = time.time()
     await bot.send_message(
@@ -210,21 +198,20 @@ async def notification_add(message):
             'Уведомление добавлено!',
             reply_markup=get_notifications_markup(),
     )
-    await bot.set_state(message.from_user.id, NotificationStates.list, message.chat.id)
+    await NotificationStates.list.set()
 
 
-@bot.message_handler(state=NotificationStates.list, text_contains=[Button.delete_notification])
-async def pre_notification_delete(message):
-    await bot.reply_to(
-        message,
+@dp.message_handler(Text(contains=[Button.delete_notification]),state=NotificationStates.list)
+async def pre_notification_delete(message: types.Message):
+    await message.reply(
         'Какое уведомление из списка хочешь удалить?',
         reply_markup=types.ForceReply(),
     )
-    await bot.set_state(message.from_user.id, NotificationStates.delete, message.chat.id)
+    await NotificationStates.delete.set()
 
 
-@bot.message_handler(state=NotificationStates.delete)
-async def notification_delete(message):
+@dp.message_handler(state=NotificationStates.delete)
+async def notification_delete(message: types.Message):
     try:
         payment: Payment = selected_payment.get(message.from_user.id)['payment']
         notification_number = int(message.text) - 1
@@ -243,11 +230,11 @@ async def notification_delete(message):
             'Уведомление удалено!',
             reply_markup=get_notifications_markup(),
     )
-    await bot.set_state(message.from_user.id, NotificationStates.list, message.chat.id)
+    await NotificationStates.list.set()
 
 
-@bot.message_handler(state=NotificationStates.list)
-@bot.message_handler(state=PaymentStates.select, is_digit=True)
+@dp.message_handler(state=NotificationStates.list)
+@dp.message_handler(Regexp(r'^\d+$'), state=PaymentStates.select)
 async def notification_list(message):
     bot_text = list()
     notification_list = list()
@@ -267,7 +254,7 @@ async def notification_list(message):
             '\n'.join(bot_text),
             reply_markup=get_payments_markup(),
         )
-        await bot.set_state(message.from_user.id, PaymentStates.list, message.chat.id)
+        await PaymentStates.list.set()
     else:
         selected_payment[message.from_user.id] = {
             'payment': payment,
@@ -283,4 +270,4 @@ async def notification_list(message):
             '\n'.join(bot_text),
             reply_markup=get_notifications_markup(),
         )
-        await bot.set_state(message.from_user.id, NotificationStates.list, message.chat.id)
+        await NotificationStates.list.set()

@@ -2,10 +2,10 @@ import logging
 from contextlib import suppress
 
 from peewee import SqliteDatabase
-from telebot.async_telebot import AsyncTeleBot
-from telebot.asyncio_filters import TextContainsFilter, StateFilter, IsReplyFilter, IsDigitFilter
-from telebot.asyncio_storage import StateMemoryStorage
-from telebot.asyncio_handler_backends import State, StatesGroup
+from aiogram import Bot, Dispatcher
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+
+from src.states import MainStates, NotificationStates, PaymentStates
 
 
 API_KEY = 'SOBAKA_BABAKA'
@@ -22,13 +22,7 @@ with suppress(ImportError):
     from utils.local_settings import *
 
 
-bot = AsyncTeleBot(API_KEY, state_storage=StateMemoryStorage())
-bot.add_custom_filter(TextContainsFilter())
-bot.add_custom_filter(IsReplyFilter())
-bot.add_custom_filter(IsDigitFilter())
-bot.add_custom_filter(StateFilter(bot))
+bot = Bot(API_KEY)
+storage = MemoryStorage()
 
-
-class MainStates(StatesGroup):
-    main_menu = State()
-    change_name = State()
+dp = Dispatcher(bot, storage=storage)

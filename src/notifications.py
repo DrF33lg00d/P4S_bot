@@ -1,13 +1,5 @@
-from telebot.asyncio_handler_backends import State, StatesGroup
-
 from utils.db import Payment, Notification
 from src.scheduler import add_notif_job
-
-
-class NotificationStates(StatesGroup):
-    list = State()
-    add = State()
-    delete = State()
 
 
 def get_notification_list(payment: Payment) -> list[Notification]:
@@ -22,7 +14,8 @@ def get_notification_list(payment: Payment) -> list[Notification]:
 def add_notification(payment: Payment, days_before: int) -> Notification| None:
     if 0 < days_before < 20:
         notification = Notification.get_or_create(payment=payment, day_before_payment=days_before)
-        add_notif_job(notification[0])
+        # TODO: Add schduler task
+        # add_notif_job(notification[0])
         return notification
 
 

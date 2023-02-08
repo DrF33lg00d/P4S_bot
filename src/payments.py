@@ -1,13 +1,4 @@
-from telebot.asyncio_handler_backends import State, StatesGroup
-
 from utils.db import User, Payment
-
-
-class PaymentStates(StatesGroup):
-    list = State()
-    add = State()
-    select = State()
-    delete = State()
 
 
 def get_payment_list(user_id: int) -> list[Payment]:
