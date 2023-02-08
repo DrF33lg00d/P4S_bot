@@ -6,9 +6,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.triggers.cron import CronTrigger
-
+from aiogram import Bot, Dispatcher
 from utils.db import Notification, Payment, User
-from utils.settings import MainStates, bot, logging
+from utils.settings import MainStates, dp, logging
 from src.buttons import get_main_markup
 
 
@@ -28,14 +28,17 @@ job_defaults = {
 
 scheduler = AsyncIOScheduler(
     jobstores=jobstores,
-    executors=executors,
-    job_defaults=job_defaults,
+    # executors=executors,
+    # job_defaults=job_defaults,
     timezone=utc
 )
+
+
 def start():
     scheduler.start()
 
-def send_notification(notification: Notification):
+
+async def send_notification(notification: Notification):
     user: User = notification.payment.user
     message = (
         f'Привет, {user.username}!',
@@ -43,22 +46,17 @@ def send_notification(notification: Notification):
         f'Стоимость: {notification.payment.price}',
     )
     try:
-        # TODO: Needs update to sending message
-        asyncio.run(bot.send_message(
+        await dp.bot.send_message(
             user.telegram_id,
             '\n'.join(message),
             reply_markup=get_main_markup()
-        ))
+        )
     except Exception as exc:
         error_message = (
             str(exc),
             f'Cannot send message about notification, job_name: {get_job_name(notification)}'
         )
         logger.debug('\n'.join(error_message))
-    asyncio.run(bot.set_state(
-        notification.payment.user.telegram_id,
-        MainStates.main_menu,
-    ))
 
 
 def get_job_name(notif: Notification) -> str:
