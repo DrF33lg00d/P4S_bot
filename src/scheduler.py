@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 import asyncio
 from pytz import utc
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -41,6 +43,7 @@ def send_notification(notification: Notification):
         f'Стоимость: {notification.payment.price}',
     )
     try:
+        # TODO: Needs update to sending message
         asyncio.run(bot.send_message(
             user.telegram_id,
             '\n'.join(message),
@@ -77,4 +80,10 @@ def add_notif_job(notif: Notification):
         kwargs={'notification': notif},
         trigger=cron,
         name=job_id,
+        id=job_id,
     )
+
+def delete_notif_job(notif: Notification):
+    job_id = get_job_name(notif)
+    with suppress(Exception):
+        scheduler.remove_job(job_id)
