@@ -18,6 +18,16 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+
+def get_day_word(day: int) -> str:
+    if day % 10 == 1:
+        return 'день'
+    elif (2 <= day % 10 <= 4) and (10 > day % 100 or day % 100 > 20):
+        return 'дня'
+    else:
+        return 'дней'
+
+
 with suppress(ImportError):
     from utils.local_settings import *
 

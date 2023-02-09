@@ -1,5 +1,5 @@
 from utils.db import Payment, Notification
-from src.scheduler import add_notif_job
+from src.scheduler import add_notif_job, delete_notif_job
 
 
 def get_notification_list(payment: Payment) -> list[Notification]:
@@ -23,4 +23,5 @@ def delete_notification(payment: Payment, notification_number: int) -> bool:
         notification = get_notification_list(payment)[notification_number]
     except IndexError:
         return False
+    delete_notif_job(notification)
     return bool(notification.delete_instance())

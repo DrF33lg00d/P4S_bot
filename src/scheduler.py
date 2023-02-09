@@ -8,7 +8,7 @@ from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.triggers.cron import CronTrigger
 from aiogram import Bot, Dispatcher
 from utils.db import Notification, Payment, User
-from utils.settings import MainStates, dp, logging
+from utils.settings import MainStates, dp, logging, get_day_word
 from src.buttons import get_main_markup
 
 
@@ -40,9 +40,10 @@ def start():
 
 async def send_notification(notification: Notification):
     user: User = notification.payment.user
+    days_left: str = f'{notification.day_before_payment} {get_day_word(notification.day_before_payment)}'
     message = (
         f'Привет, {user.username}!',
-        f'Скоро оплата по сервису: {notification.payment.name}',
+        f'Оплата по сервису {notification.payment.name} произойдёт через {days_left}.',
         f'Стоимость: {notification.payment.price}',
     )
     try:
