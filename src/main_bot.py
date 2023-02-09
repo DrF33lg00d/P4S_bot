@@ -7,7 +7,7 @@ from collections import defaultdict
 from aiogram import executor, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
-from utils.settings import logging, bot, dp
+from utils.settings import logging, bot, dp, PAYMENTS
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
 from src.username import create_or_update_user, change_username
@@ -18,7 +18,7 @@ from utils.db import User, Payment, Notification
 
 logger = logging.getLogger(__name__)
 
-selected_payment = defaultdict(dict)
+PAYMENTS = defaultdict(dict)
 
 
 def run_bot():
@@ -164,8 +164,8 @@ async def pre_notification_list(message: types.Message):
 
 @dp.message_handler(Text(contains=[Button.move_back]), state=NotificationStates.list)
 async def move_back_from_notif(message: types.Message):
-    if selected_payment.get(message.from_user.id):
-        selected_payment.pop(message.from_user.id)
+    if PAYMENTS.get(message.from_user.id):
+        PAYMENTS.pop(message.from_user.id)
     await PaymentStates.list.set()
     await payments_list(message)
 
@@ -181,7 +181,7 @@ async def pre_notification_add(message: types.Message):
 @dp.message_handler(state=NotificationStates.add)
 async def notification_add(message: types.Message):
     try:
-        payment: Payment = selected_payment.get(message.from_user.id)['payment']
+        payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
         day_before_notification = int(message.text)
         add_notification(payment, day_before_notification)
     except (TypeError, IndexError, TypeError):
@@ -192,7 +192,7 @@ async def notification_add(message: types.Message):
         )
         await NotificationStates.list.set()
         return
-    selected_payment.get(message.from_user.id)['timestamp'] = time.time()
+    PAYMENTS.get(message.from_user.id)['timestamp'] = time.time()
     await bot.send_message(
             message.chat.id,
             'Уведомление добавлено!',
@@ -213,7 +213,7 @@ async def pre_notification_delete(message: types.Message):
 @dp.message_handler(state=NotificationStates.delete)
 async def notification_delete(message: types.Message):
     try:
-        payment: Payment = selected_payment.get(message.from_user.id)['payment']
+        payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
         notification_number = int(message.text) - 1
         assert delete_notification(payment, notification_number)
     except (TypeError, IndexError, TypeError, AssertionError):
@@ -224,7 +224,7 @@ async def notification_delete(message: types.Message):
         )
         await bot.set_state(message.from_user.id, NotificationStates.list, message.chat.id)
         return
-    selected_payment.get(message.from_user.id)['timestamp'] = time.time()
+    PAYMENTS.get(message.from_user.id)['timestamp'] = time.time()
     await bot.send_message(
             message.chat.id,
             'Уведомление удалено!',
@@ -256,7 +256,7 @@ async def notification_list(message):
         )
         await PaymentStates.list.set()
     else:
-        selected_payment[message.from_user.id] = {
+        PAYMENTS[message.from_user.id] = {
             'payment': payment,
             'timestamp': time.time()
         }

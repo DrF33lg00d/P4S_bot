@@ -1,5 +1,6 @@
 import logging
 from contextlib import suppress
+from collections import defaultdict
 
 from peewee import SqliteDatabase
 from aiogram import Bot, Dispatcher
@@ -9,6 +10,7 @@ from src.states import MainStates, NotificationStates, PaymentStates
 
 
 API_KEY = 'SOBAKA_BABAKA'
+PAYMENTS = defaultdict(dict)
 
 database = SqliteDatabase('default.db')
 
