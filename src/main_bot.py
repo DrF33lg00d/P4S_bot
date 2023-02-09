@@ -96,14 +96,19 @@ async def pre_payment_add(message: types.Message):
 
 @dp.message_handler(state=PaymentStates.add)
 async def payment_add(message: types.Message):
-    name, description, price, date_payment = message.text.replace(', ', ',').split(',')
-    date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
-    price = float(price)
-    payment = add_payment(message.from_user.id, name, description, price, date_payment)
-    logger.debug(f'Add payment {name} for user {payment.user.username}')
+    try:
+        name, description, price, date_payment = message.text.replace(', ', ',').split(',')
+        date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
+        price = float(price)
+        payment = add_payment(message.from_user.id, name, description, price, date_payment)
+        logger.debug(f'Add payment {name} for user {payment.user.username}')
+        message = 'Новая оплата добавлена!'
+    except Exception as exc:
+        logger.error(f'Cannot parse {message.text}')
+        message = 'Что-то пошло не так. Попробуйте ещё раз.'
     await bot.send_message(
         message.chat.id,
-        'Новая оплата добавлена!',
+        message,
         reply_markup=get_payments_markup()
     )
     await PaymentStates.list.set()
@@ -182,19 +187,15 @@ async def notification_add(message: types.Message):
         payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
         day_before_notification = int(message.text)
         add_notification(payment, day_before_notification)
+        message = 'Уведомление добавлено!'
     except (TypeError, IndexError, TypeError):
-        await bot.send_message(
-            message.chat.id,
-            'Ошибка добавления уведомления, попробуйте ещё раз',
-            reply_markup=get_notifications_markup(),
-        )
-        await NotificationStates.list.set()
-        return
+        message = 'Ошибка добавления уведомления, попробуйте ещё раз'
+
     PAYMENTS.get(message.from_user.id)['timestamp'] = time.time()
     await bot.send_message(
-            message.chat.id,
-            'Уведомление добавлено!',
-            reply_markup=get_notifications_markup(),
+        message.chat.id,
+        message,
+        reply_markup=get_notifications_markup(),
     )
     await NotificationStates.list.set()
 
