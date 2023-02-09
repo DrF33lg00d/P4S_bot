@@ -31,30 +31,33 @@ async def start(message: types.Message):
     await main_buttons(message)
 
 async def main_buttons(message: types.Message):
-    await bot.send_message(message.chat.id, 'Чего изволите?', reply_markup=get_main_markup())
+    await bot.send_message(
+        message.chat.id,
+        'Чего изволите?',
+        reply_markup=get_main_markup()
+    )
 
 
-@dp.message_handler(commands=Button.rename)
+@dp.message_handler(Text(contains=[Button.rename]))
 async def pre_change_name(message: types.Message):
     logger.debug(f'User wants change username')
-    await MainStates.change_name.set()
     await message.reply(
-        message.chat.id,
         'Ну-ка, и как ты хочешь называться теперь?',
         reply_markup=types.ReplyKeyboardRemove()
     )
+    await MainStates.change_name.set()
 
 
 @dp.message_handler(state=MainStates.change_name)
 async def change_name(message: types.Message, state: FSMContext):
     logger.debug(f'User change username to {message.text}')
     change_username(message.from_user.id, message.text)
-    await state.finish()
     await bot.send_message(
         message.chat.id,
         f'Отлично, в случае чего буду к тебе так обращаться!'
     )
-    await main_buttons(message.chat.id)
+    await state.finish()
+    await main_buttons(message)
 
 
 @dp.message_handler(Text(contains=[Button.payments]))
@@ -234,7 +237,7 @@ async def notification_delete(message: types.Message):
 
 @dp.message_handler(state=NotificationStates.list)
 @dp.message_handler(Regexp(r'^\d+$'), state=PaymentStates.select)
-async def notification_list(message):
+async def notification_list(message: types.Message):
     bot_text = list()
     notification_list = list()
     error: bool = False
@@ -270,3 +273,12 @@ async def notification_list(message):
             reply_markup=get_notifications_markup(),
         )
         await NotificationStates.list.set()
+
+@dp.message_handler()
+async def cannot_parse(message: types.Message, state: FSMContext):
+    await bot.send_message(
+        message.chat.id,
+        'Прости, не понимаю что ты от меня хочешь.\nДавай по новой.',
+        reply_markup=get_main_markup()
+    )
+    await state.finish()
