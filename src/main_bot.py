@@ -18,8 +18,6 @@ from utils.db import User, Payment, Notification
 
 logger = logging.getLogger(__name__)
 
-PAYMENTS = defaultdict(dict)
-
 
 def run_bot():
     executor.start_polling(dp, skip_updates=True)

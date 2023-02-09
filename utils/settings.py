@@ -11,6 +11,7 @@ from src.states import MainStates, NotificationStates, PaymentStates
 
 API_KEY = 'SOBAKA_BABAKA'
 PAYMENTS = defaultdict(dict)
+CACHE_CLEAR_TIMER = 300
 
 database = SqliteDatabase('default.db')
 

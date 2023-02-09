@@ -1,3 +1,4 @@
+import time
 from contextlib import suppress
 
 import asyncio
@@ -8,7 +9,7 @@ from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.triggers.cron import CronTrigger
 from aiogram import Bot, Dispatcher
 from utils.db import Notification, Payment, User
-from utils.settings import MainStates, dp, logging, get_day_word
+from utils.settings import MainStates, dp, logging, get_day_word, PAYMENTS, CACHE_CLEAR_TIMER
 from src.buttons import get_main_markup
 
 
@@ -38,6 +39,7 @@ def start():
     scheduler.start()
     for notitication in Notification.select():
         add_notif_job(notitication)
+    job_clear_cache()
 
 
 async def send_notification(notification: Notification):
@@ -88,3 +90,28 @@ def delete_notif_job(notif: Notification):
     job_id = get_job_name(notif)
     with suppress(Exception):
         scheduler.remove_job(job_id)
+    del job_id
+
+
+def job_clear_cache():
+    cron = CronTrigger(
+        year='*',
+        month='*',
+        day='*',
+        hour='*',
+        minute='*/5',
+        second='0',
+    )
+    scheduler.add_job(
+        clear_cache,
+        trigger=cron,
+        name='clear_cache',
+        id='clear_cache',
+    )
+
+def clear_cache():
+    id_list = tuple(PAYMENTS.keys())
+    for telegram_id in id_list:
+        if time.time() - PAYMENTS[telegram_id]['timestamp'] > CACHE_CLEAR_TIMER:
+            PAYMENTS.pop(telegram_id)
+    del id_list
