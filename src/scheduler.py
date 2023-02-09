@@ -36,6 +36,8 @@ scheduler = AsyncIOScheduler(
 
 def start():
     scheduler.start()
+    for notitication in Notification.select():
+        add_notif_job(notitication)
 
 
 async def send_notification(notification: Notification):
