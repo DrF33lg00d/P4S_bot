@@ -1,7 +1,9 @@
+from contextlib import suppress
 from datetime import date
 
 from peewee import (
-    Model, CharField, AutoField, IntegerField, FloatField, DateField, ForeignKeyField
+    Model, CharField, AutoField, IntegerField, FloatField, DateField,
+    ForeignKeyField, IntegrityError
 )
 
 from utils.settings import database
@@ -63,6 +65,25 @@ def delete_payment(user_id: int, payment_number: int) -> bool:
     user = User.get(telegram_id=user_id)
     payment_item = get_payment_list(user.telegram_id)[payment_number-1]
     return bool(payment_item.delete_instance())
+
+
+def create_or_update_user(telegram_id: int, username: str):
+    user = {
+        'telegram_id': telegram_id,
+    }
+    if username:
+        user.update({'username': username})
+    with suppress(IntegrityError) as unique_error:
+        User.get_or_create(**user)
+    del user
+
+
+def change_username(telegram_id: int, new_username: str):
+    user = User.get_or_create(telegram_id=telegram_id)[0]
+    user.username = new_username
+    user.save()
+    del user
+
 
 
 database.connect()
