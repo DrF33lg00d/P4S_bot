@@ -189,14 +189,14 @@ async def notification_add(message: types.Message):
         payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
         day_before_notification = int(message.text)
         add_notification(payment, day_before_notification)
-        message = 'Уведомление добавлено!'
+        bot_message = 'Уведомление добавлено!'
     except (TypeError, IndexError, TypeError):
-        message = 'Ошибка добавления уведомления, попробуйте ещё раз'
+        bot_message = 'Ошибка добавления уведомления, попробуйте ещё раз'
 
     PAYMENTS.get(message.from_user.id)['timestamp'] = time.time()
     await bot.send_message(
         message.chat.id,
-        message,
+        bot_message,
         reply_markup=get_notifications_markup(),
     )
     await NotificationStates.list.set()
