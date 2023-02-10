@@ -1,8 +1,5 @@
-import asyncio
 import time
 from datetime import datetime
-from collections import defaultdict
-
 
 from aiogram import executor, types
 from aiogram.dispatcher import FSMContext
