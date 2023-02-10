@@ -10,7 +10,7 @@ from src.buttons import get_main_markup, get_payments_markup, get_notifications_
 from src.notifications import get_notification_list, add_notification, delete_notification
 from utils.db import (
     User, Payment, Notification,
-    create_or_update_user, change_username,
+    create_or_update_user,
 )
 
 
@@ -49,12 +49,15 @@ async def pre_change_name(message: types.Message):
 @dp.message_handler(state=MainStates.change_name)
 async def change_name(message: types.Message, state: FSMContext):
     logger.debug(f'User change username to {message.text}')
-    change_username(message.from_user.id, message.text)
+    user: User = User.get_or_create(telegram_id=message.from_user.id)[0]
+    user.username = message.text
+    user.save()
     await bot.send_message(
         message.chat.id,
-        f'Отлично, в случае чего буду к тебе так обращаться!'
+        f'Отлично, буду звать тебя "{user.username}"!'
     )
     await state.finish()
+    del user
     await main_buttons(message)
 
 
