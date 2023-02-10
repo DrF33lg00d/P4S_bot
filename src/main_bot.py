@@ -11,7 +11,7 @@ from src.notifications import get_notification_list, add_notification, delete_no
 from utils.db import (
     User, Payment, Notification,
     create_or_update_user, change_username,
-    add_payment, delete_payment,
+    delete_payment,
 )
 
 
@@ -103,15 +103,17 @@ async def payment_add(message: types.Message):
         name, description, price, date_payment = message.text.replace(', ', ',').split(',')
         date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
         price = float(price)
-        payment = add_payment(message.from_user.id, name, description, price, date_payment)
-        logger.debug(f'Add payment {name} for user {payment.user.username}')
-        message = 'Новая оплата добавлена!'
-    except Exception as exc:
-        logger.error(f'Cannot parse {message.text}')
-        message = 'Что-то пошло не так. Попробуйте ещё раз.'
+
+        user: User = User.get(telegram_id=message.from_user.id)
+        payment: Payment = user.add_payment(name, description, price, date_payment)
+        logger.debug(f'Add payment "{name}" for user {user.id}')
+        bot_message = f'Новый сервис "{payment.name}" добавлена!'
+    except (ValueError, TypeError) as exc:
+        logger.error(f'Cannot parse "{message.text}"')
+        bot_message = 'Что-то пошло не так. Попробуйте ещё раз.'
     await bot.send_message(
         message.chat.id,
-        message,
+        bot_message,
         reply_markup=get_payments_markup()
     )
     await PaymentStates.list.set()
@@ -119,8 +121,7 @@ async def payment_add(message: types.Message):
 
 @dp.message_handler(Text(contains=[Button.delete_payment]), state=PaymentStates.list)
 async def pre_payment_delete(message: types.Message):
-    await bot.reply_to(
-        message,
+    await message.reply(
         'Напиши номер сервиса, который хочешь удалить',
         reply_markup=types.ForceReply(),
     )

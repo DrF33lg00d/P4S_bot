@@ -27,6 +27,17 @@ class User(BaseModel):
                     )
         return payments
 
+    def add_payment(self, name: str, description: str, price: float,
+                    date) -> object:
+        payment: Payment = Payment.create(
+            name=name,
+            description=description,
+            price=price,
+            date=date,
+            user=self,
+        )
+        return payment
+
 
 class Payment(BaseModel):
     id = AutoField()
@@ -41,24 +52,6 @@ class Notification(BaseModel):
     id = AutoField()
     day_before_payment = IntegerField(default=1)
     payment = ForeignKeyField(Payment, backref='notifications', on_delete='cascade')
-
-
-def add_payment(
-        user_id: int,
-        name: str,
-        description: str,
-        price: float,
-        date
-) -> Payment:
-    user = User.get(telegram_id=user_id)
-    payment = Payment.create(
-        name=name,
-        description=description,
-        price=price,
-        date=date,
-        user_id=user,
-    )
-    return payment
 
 
 def delete_payment(user_id: int, payment_number: int) -> bool:
