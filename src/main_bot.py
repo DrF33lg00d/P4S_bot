@@ -11,9 +11,8 @@ from utils.settings import logging, bot, dp, PAYMENTS
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
 from src.username import create_or_update_user, change_username
-from src.payments import get_payment_list, add_payment, delete_payment
 from src.notifications import get_notification_list, add_notification, delete_notification
-from utils.db import User, Payment, Notification
+from utils.db import User, Payment, Notification, get_payment_list, add_payment, delete_payment
 
 
 logger = logging.getLogger(__name__)
