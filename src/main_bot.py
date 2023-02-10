@@ -11,7 +11,6 @@ from src.notifications import get_notification_list, add_notification, delete_no
 from utils.db import (
     User, Payment, Notification,
     create_or_update_user, change_username,
-    delete_payment,
 )
 
 
@@ -132,8 +131,9 @@ async def pre_payment_delete(message: types.Message):
 async def payment_delete(message: types.Message):
     bot_text = list()
     try:
+        user: User = User.get(telegram_id=message.from_user.id)
         payment_number = int(message.text)
-        delete_result = delete_payment(message.from_user.id, payment_number)
+        delete_result = user.delete_payment(payment_number)
         if delete_result:
             bot_text.append('Удалено выполнено')
         else:

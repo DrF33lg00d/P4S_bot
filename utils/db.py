@@ -38,6 +38,10 @@ class User(BaseModel):
         )
         return payment
 
+    def delete_payment(self, payment_number: int) -> bool:
+        payment_item = self.get_payment_list()[payment_number-1]
+        return bool(payment_item.delete_instance())
+
 
 class Payment(BaseModel):
     id = AutoField()
@@ -52,12 +56,6 @@ class Notification(BaseModel):
     id = AutoField()
     day_before_payment = IntegerField(default=1)
     payment = ForeignKeyField(Payment, backref='notifications', on_delete='cascade')
-
-
-def delete_payment(user_id: int, payment_number: int) -> bool:
-    user = User.get(telegram_id=user_id)
-    payment_item = user.get_payment_list()[payment_number-1]
-    return bool(payment_item.delete_instance())
 
 
 def create_or_update_user(telegram_id: int, username: str):
