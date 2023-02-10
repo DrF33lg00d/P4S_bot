@@ -19,6 +19,14 @@ class User(BaseModel):
     telegram_id = IntegerField(unique=True)
     username = CharField(default='Default User')
 
+    def get_payment_list(self) -> list[object]:
+        payments: Payment = (Payment.select()
+                    .join(User)
+                    .where(User.telegram_id == self.telegram_id)
+                    .order_by(Payment.id)
+                    )
+        return payments
+
 
 class Payment(BaseModel):
     id = AutoField()
@@ -34,14 +42,6 @@ class Notification(BaseModel):
     day_before_payment = IntegerField(default=1)
     payment = ForeignKeyField(Payment, backref='notifications', on_delete='cascade')
 
-
-def get_payment_list(user_id: int) -> list[Payment]:
-    payments = (Payment.select()
-                .join(User)
-                .where(User.telegram_id == user_id)
-                .order_by(Payment.id)
-                )
-    return payments
 
 def add_payment(
         user_id: int,
@@ -63,7 +63,7 @@ def add_payment(
 
 def delete_payment(user_id: int, payment_number: int) -> bool:
     user = User.get(telegram_id=user_id)
-    payment_item = get_payment_list(user.telegram_id)[payment_number-1]
+    payment_item = user.get_payment_list()[payment_number-1]
     return bool(payment_item.delete_instance())
 
 

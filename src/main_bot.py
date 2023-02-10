@@ -11,7 +11,7 @@ from src.notifications import get_notification_list, add_notification, delete_no
 from utils.db import (
     User, Payment, Notification,
     create_or_update_user, change_username,
-    get_payment_list, add_payment, delete_payment,
+    add_payment, delete_payment,
 )
 
 
@@ -63,9 +63,10 @@ async def change_name(message: types.Message, state: FSMContext):
 @dp.message_handler(Text(contains=[Button.payments]), state=PaymentStates.list)
 async def payments_list(message: types.Message):
     logger.debug(f'User select payments list')
+    user: User = User.get(telegram_id=message.from_user.id)
     payments = [
         f'{count + 1}.\t{payment.description}'
-        for count, payment in enumerate(get_payment_list(message.from_user.id))
+        for count, payment in enumerate(user.get_payment_list())
     ]
     if payments:
         bot_text = '\n'.join(['Твой список платежей:'] + payments)
@@ -240,8 +241,9 @@ async def notification_list(message: types.Message):
     bot_text = list()
     notification_list = list()
     error: bool = False
+    user: User = User.get(telegram_id=message.from_user.id)
     try:
-        payment = get_payment_list(message.from_user.id)[int(message.text)-1]
+        payment = user.get_payment_list()[int(message.text)-1]
         notification_list = get_notification_list(payment)
     except ValueError:
         bot_text.append('Ошибка! Некорректный номер сервиса')
