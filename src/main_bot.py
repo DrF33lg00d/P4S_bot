@@ -7,7 +7,6 @@ from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
 from utils.settings import logging, bot, dp, PAYMENTS
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
-from src.notifications import get_notification_list, add_notification, delete_notification
 from utils.db import (
     User, Payment, Notification,
     create_or_update_user,
@@ -193,7 +192,7 @@ async def notification_add(message: types.Message):
     try:
         payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
         day_before_notification = int(message.text)
-        add_notification(payment, day_before_notification)
+        payment.add_notification(day_before_notification)
         bot_message = 'Уведомление добавлено!'
     except (TypeError, IndexError, TypeError):
         bot_message = 'Ошибка добавления уведомления, попробуйте ещё раз'
@@ -221,7 +220,7 @@ async def notification_delete(message: types.Message):
     try:
         payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
         notification_number = int(message.text) - 1
-        assert delete_notification(payment, notification_number)
+        assert payment.delete_notification(notification_number)
     except (TypeError, IndexError, TypeError, AssertionError):
         await bot.send_message(
             message.chat.id,
@@ -247,8 +246,8 @@ async def notification_list(message: types.Message):
     error: bool = False
     user: User = User.get(telegram_id=message.from_user.id)
     try:
-        payment = user.get_payment_list()[int(message.text)-1]
-        notification_list = get_notification_list(payment)
+        payment: Payment = user.get_payment_list()[int(message.text)-1]
+        notification_list = payment.get_notification_list()
     except ValueError:
         bot_text.append('Ошибка! Некорректный номер сервиса')
         error = True

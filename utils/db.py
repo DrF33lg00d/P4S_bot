@@ -1,12 +1,15 @@
 from contextlib import suppress
 from datetime import date
+from typing import Optional
 
 from peewee import (
     Model, CharField, AutoField, IntegerField, FloatField, DateField,
     ForeignKeyField, IntegrityError
 )
+from apscheduler.triggers.cron import CronTrigger
 
 from utils.settings import database
+from src.scheduler import scheduler, send_notification
 
 
 class BaseModel(Model):
@@ -51,11 +54,68 @@ class Payment(BaseModel):
     date = DateField(default=date.today())
     user = ForeignKeyField(User, backref='payments', on_delete='cascade')
 
+    def get_notification_list(self) -> list[object]:
+        notifications: Notification = (Notification.select()
+                    .join(Payment)
+                    .where(Payment.id == self.id)
+                    .order_by(Notification.id)
+                    )
+        return notifications
+
+    def add_notification(self, days_before: int) -> Optional[object]:
+        if 0 >= days_before or days_before >= 20:
+            return None
+        notification: Notification = Notification.get_or_create(payment=self, day_before_payment=days_before)[0]
+        notification.add_job()
+        return notification
+
+    def delete_notification(self, notification_number: int) -> bool:
+        try:
+            notification = self.get_notification_list()[notification_number]
+        except IndexError:
+            return False
+        notification.delete_notif_job()
+        return bool(notification.delete_instance())
+
 
 class Notification(BaseModel):
     id = AutoField()
     day_before_payment = IntegerField(default=1)
     payment = ForeignKeyField(Payment, backref='notifications', on_delete='cascade')
+
+    def get_job_name(self) -> str:
+        return f'u{self.id}p{self.payment.id}n{self.payment.user.id}'
+
+    def delete_notif_job(self):
+        with suppress(Exception):
+            scheduler.remove_job(self.get_job_name())
+
+    def add_job(self) -> None:
+        # TODO: Change schedule trigger after debug
+        cron = CronTrigger(
+            year='*',
+            month='*',
+            day='*',
+            hour='*',
+            minute='*',
+            second='0',
+        )
+        job_id = self.get_job_name()
+        message_objects: dict = {
+            'telegram_id': self.payment.user.telegram_id,
+            'username': self.payment.user.username,
+            'payment_name': self.payment.name,
+            'payment_price': self.payment.price,
+            'notif_days': self.day_before_payment,
+        }
+
+        scheduler.add_job(
+            send_notification,
+            kwargs=message_objects,
+            trigger=cron,
+            name=job_id,
+            id=job_id,
+        )
 
 
 def create_or_update_user(telegram_id: int, username: str):

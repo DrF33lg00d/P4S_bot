@@ -6,7 +6,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.triggers.cron import CronTrigger
-from utils.db import Notification, Payment, User
 from utils.settings import dp, logging, get_day_word, PAYMENTS, CACHE_CLEAR_TIMER
 from src.buttons import get_main_markup
 
@@ -35,60 +34,29 @@ scheduler = AsyncIOScheduler(
 
 def start():
     scheduler.start()
-    for notitication in Notification.select():
-        add_notif_job(notitication)
     job_clear_cache()
 
 
-async def send_notification(notification: Notification):
-    user: User = notification.payment.user
-    days_left: str = f'{notification.day_before_payment} {get_day_word(notification.day_before_payment)}'
+async def send_notification(telegram_id: int, payment_price: float,
+                            username: str, payment_name: str, notif_days: int):
+    days_left: str = f'{notif_days} {get_day_word(notif_days)}'
     message = (
-        f'Привет, {user.username}!',
-        f'Оплата по сервису {notification.payment.name} произойдёт через {days_left}.',
-        f'Стоимость: {notification.payment.price}',
+        f'Привет, {username}!',
+        f'Оплата по сервису {payment_name} произойдёт через {days_left}.',
+        f'Стоимость: {payment_price}',
     )
     try:
         await dp.bot.send_message(
-            user.telegram_id,
+            telegram_id,
             '\n'.join(message),
             reply_markup=get_main_markup()
         )
     except Exception as exc:
         error_message = (
             str(exc),
-            f'Cannot send message about notification, job_name: {get_job_name(notification)}'
+            f'Cannot send message about notification to user {telegram_id} about {payment_name}'
         )
         logger.debug('\n'.join(error_message))
-
-
-def get_job_name(notif: Notification) -> str:
-    return f'u{notif.id}p{notif.payment.id}n{notif.payment.user.id}'
-
-def add_notif_job(notif: Notification):
-    # TODO: Change schedule trigger after debug
-    cron = CronTrigger(
-        year='*',
-        month='*',
-        day='*',
-        hour='*',
-        minute='*',
-        second='0',
-    )
-    job_id = get_job_name(notif)
-    scheduler.add_job(
-        send_notification,
-        kwargs={'notification': notif},
-        trigger=cron,
-        name=job_id,
-        id=job_id,
-    )
-
-def delete_notif_job(notif: Notification):
-    job_id = get_job_name(notif)
-    with suppress(Exception):
-        scheduler.remove_job(job_id)
-    del job_id
 
 
 def job_clear_cache():
@@ -106,6 +74,7 @@ def job_clear_cache():
         name='clear_cache',
         id='clear_cache',
     )
+
 
 def clear_cache():
     id_list = tuple(PAYMENTS.keys())
