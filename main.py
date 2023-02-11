@@ -1,26 +1,12 @@
-import logging
-import asyncio
+from src.main_bot import run_bot
+from src.scheduler import start as schedule_start
+from utils.db import initialize_db
 
-from telebot.async_telebot import AsyncTeleBot
-
-import utils.settings as settings
-
-logging.basicConfig(
-    filename='log.log',
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%m/%d/%Y %H:%M:%S',
-    level=logging.DEBUG
-)
-
-
-bot = AsyncTeleBot(settings.API_KEY)
-
-
-@bot.message_handler(commands=['help', 'start'])
-async def start(message):
-    logging.debug(f'User chose /start command')
-    await bot.reply_to(message, 'Hello there!')
+def main():
+    schedule_start()
+    initialize_db()
+    run_bot()
 
 
 if __name__ == '__main__':
-    asyncio.run(bot.infinity_polling(skip_pending=True))
+    main()

@@ -130,3 +130,9 @@ dmypy.json
 
 # JB
 .idea/
+
+# VS Code
+.vscode/
+
+*.db
+.handler-saves
