@@ -20,8 +20,10 @@ def run_bot():
 
 @dp.message_handler(commands='start')
 async def start(message: types.Message):
-    logger.debug(f'User {message.from_user.id} chose /start command')
     User.create_or_update(message.from_user.id, message.from_user.username)
+    user: User = User.get(telegram_id=message.from_user.id)
+    logger.debug(f'User "{user.id}" choose /start command')
+    del user
     await message.reply('Hello there!')
     await main_buttons(message)
 
@@ -35,7 +37,9 @@ async def main_buttons(message: types.Message):
 
 @dp.message_handler(Text(contains=[Button.rename]))
 async def pre_change_name(message: types.Message):
-    logger.debug(f'User wants change username')
+    user: User = User.get(telegram_id=message.from_user.id)
+    logger.debug(f'User "{user.id}" wants change username')
+    del user
     await message.reply(
         'Ну-ка, и как ты хочешь называться теперь?',
         reply_markup=types.ReplyKeyboardRemove()
@@ -45,9 +49,9 @@ async def pre_change_name(message: types.Message):
 
 @dp.message_handler(state=MainStates.change_name)
 async def change_name(message: types.Message, state: FSMContext):
-    logger.debug(f'User change username to {message.text}')
     user: User = User.get_or_create(telegram_id=message.from_user.id)[0]
     user.change_username(message.text)
+    logger.debug(f'User "{user.id}" change username to "{message.text}"')
     await bot.send_message(
         message.chat.id,
         f'Отлично, буду звать тебя "{user.username}"!'
@@ -60,8 +64,8 @@ async def change_name(message: types.Message, state: FSMContext):
 @dp.message_handler(Text(contains=[Button.payments]))
 @dp.message_handler(Text(contains=[Button.payments]), state=PaymentStates.list)
 async def payments_list(message: types.Message):
-    logger.debug(f'User select payments list')
     user: User = User.get(telegram_id=message.from_user.id)
+    logger.debug(f'User "{user.id}" select payments list')
     payments = [
         f'{count + 1}.\t{payment.description}'
         for count, payment in enumerate(user.get_payment_list())
