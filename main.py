@@ -1,11 +1,10 @@
 from src.main_bot import run_bot
 from src.scheduler import start as schedule_start
-from utils.db import Notification
+from utils.db import initialize_db
 
 def main():
     schedule_start()
-    for notitication in Notification.select():
-        notitication.add_job()
+    initialize_db()
     run_bot()
 
 

@@ -129,5 +129,9 @@ def create_or_update_user(telegram_id: int, username: str):
     del user
 
 
-database.connect()
-database.create_tables([User, Payment, Notification])
+
+def initialize_db() -> None:
+    database.connect()
+    database.create_tables([User, Payment, Notification])
+    for notitication in Notification.select():
+        notitication.add_job()
