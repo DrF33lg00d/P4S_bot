@@ -29,10 +29,10 @@ def get_day_word(day: int) -> str:
         return 'дней'
 
 
+with suppress(ImportError):
+    from utils.local_settings import *
+
+
 bot = Bot(API_KEY)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
-
-
-with suppress(ImportError):
-    from utils.local_settings import *
