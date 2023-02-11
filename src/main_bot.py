@@ -5,10 +5,10 @@ from aiogram import executor, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
 
-from utils.settings import logging, bot, dp, PAYMENTS
+from utils.settings import logging, bot, dp, PAYMENTS, get_day_word
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
-from utils.db import User, Payment
+from utils.db import User, Payment, Notification
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ async def payments_list(message: types.Message):
     user: User = User.get(telegram_id=message.from_user.id)
     logger.debug(f'User "{user.id}" select payments list')
     payments = [
-        f'{count + 1}.\t{payment.description}'
+        f'{count + 1}.\t{payment.description}, {payment.date.day} числа'
         for count, payment in enumerate(user.get_payment_list())
     ]
     if payments:
@@ -248,7 +248,7 @@ async def notification_list(message: types.Message):
     user: User = User.get(telegram_id=message.from_user.id)
     try:
         payment: Payment = user.get_payment_list()[int(message.text)-1]
-        notification_list = payment.get_notification_list()
+        notification_list: list[Notification] = payment.get_notification_list()
     except ValueError:
         bot_text.append('Ошибка! Некорректный номер сервиса')
         error = True
@@ -268,8 +268,11 @@ async def notification_list(message: types.Message):
             'timestamp': time.time()
         }
         if notification_list:
-            bot_text.append('Появление уведомлений к сервису за:')
-            bot_text = [f'{index+1}.\t{notif.day_before_payment} день/дней' for index, notif in enumerate(notification_list)]
+            bot_text.append(f'Уведомления по сервису "{payment.name}" придут за:')
+            bot_text.extend([
+                f'{index+1}.\t{notif.day_before_payment} {get_day_word(notif.day_before_payment)}'
+                for index, notif in enumerate(notification_list)
+            ])
         else:
             bot_text.append('Уведомления отсутствуют')
         await bot.send_message(
