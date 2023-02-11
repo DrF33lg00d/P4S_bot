@@ -45,6 +45,10 @@ class User(BaseModel):
         payment_item = self.get_payment_list()[payment_number-1]
         return bool(payment_item.delete_instance())
 
+    def change_username(self, new_username: str) -> None:
+        self.username = new_username
+        self.save()
+
 
 class Payment(BaseModel):
     id = AutoField()

@@ -49,8 +49,7 @@ async def pre_change_name(message: types.Message):
 async def change_name(message: types.Message, state: FSMContext):
     logger.debug(f'User change username to {message.text}')
     user: User = User.get_or_create(telegram_id=message.from_user.id)[0]
-    user.username = message.text
-    user.save()
+    user.change_username(message.text)
     await bot.send_message(
         message.chat.id,
         f'Отлично, буду звать тебя "{user.username}"!'
