@@ -49,6 +49,17 @@ class User(BaseModel):
         self.username = new_username
         self.save()
 
+    @staticmethod
+    def create_or_update(telegram_id: int, username: str) -> None:
+        user = {
+            'telegram_id': telegram_id,
+        }
+        if username:
+            user.update({'username': username})
+        with suppress(IntegrityError) as unique_error:
+            User.get_or_create(**user)
+        del user
+
 
 class Payment(BaseModel):
     id = AutoField()
@@ -122,15 +133,6 @@ class Notification(BaseModel):
         )
 
 
-def create_or_update_user(telegram_id: int, username: str):
-    user = {
-        'telegram_id': telegram_id,
-    }
-    if username:
-        user.update({'username': username})
-    with suppress(IntegrityError) as unique_error:
-        User.get_or_create(**user)
-    del user
 
 
 

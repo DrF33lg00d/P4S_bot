@@ -7,10 +7,7 @@ from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
 from utils.settings import logging, bot, dp, PAYMENTS
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
-from utils.db import (
-    User, Payment, Notification,
-    create_or_update_user,
-)
+from utils.db import User, Payment, Notification
 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +20,7 @@ def run_bot():
 @dp.message_handler(commands='start')
 async def start(message: types.Message):
     logger.debug(f'User {message.from_user.id} chose /start command')
-    create_or_update_user(message.from_user.id, message.from_user.username)
+    User.create_or_update(message.from_user.id, message.from_user.username)
     await message.reply('Hello there!')
     await main_buttons(message)
 
