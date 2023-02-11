@@ -1,6 +1,6 @@
 import time
 
-from pytz import utc
+from pytz import timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
@@ -28,7 +28,7 @@ scheduler = AsyncIOScheduler(
     jobstores=jobstores,
     # executors=executors,
     # job_defaults=job_defaults,
-    timezone=utc
+    timezone=timezone('Europe/Moscow')
 )
 
 

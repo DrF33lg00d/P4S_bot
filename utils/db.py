@@ -41,10 +41,6 @@ class User(BaseModel):
         )
         return payment
 
-    def delete_payment(self, payment_number: int) -> bool:
-        payment_item = self.get_payment_list()[payment_number-1]
-        return bool(payment_item.delete_instance())
-
     def change_username(self, new_username: str) -> None:
         self.username = new_username
         self.save()
@@ -67,7 +63,7 @@ class Payment(BaseModel):
     description = CharField()
     price = FloatField()
     date = DateField(default=date.today())
-    user = ForeignKeyField(User, backref='payments', on_delete='cascade')
+    user = ForeignKeyField(User, backref='payments', on_delete='CASCADE')
 
     def get_notification_list(self) -> list[object]:
         notifications: Notification = (Notification.select()
@@ -76,6 +72,11 @@ class Payment(BaseModel):
                     .order_by(Notification.id)
                     )
         return notifications
+
+    def delete_instance(self, *args, **kwargs) -> bool:
+        for notification in self.notifications:
+            notification.delete_notif_job()
+        return super().delete_instance(args, kwargs)
 
     def add_notification(self, days_before: int) -> Optional[object]:
         if 0 >= days_before or days_before >= 20:
@@ -96,7 +97,7 @@ class Payment(BaseModel):
 class Notification(BaseModel):
     id = AutoField()
     day_before_payment = IntegerField(default=1)
-    payment = ForeignKeyField(Payment, backref='notifications', on_delete='cascade')
+    payment = ForeignKeyField(Payment, backref='notifications', on_delete='CASCADE')
 
     def get_job_name(self) -> str:
         return f'u{self.id}p{self.payment.id}n{self.payment.user.id}'
@@ -106,13 +107,13 @@ class Notification(BaseModel):
             scheduler.remove_job(self.get_job_name())
 
     def add_job(self) -> None:
-        # TODO: Change schedule trigger after debug
+        day: int = self.payment.date.day - self.day_before_payment
         cron = CronTrigger(
             year='*',
             month='*',
-            day='*',
-            hour='*',
-            minute='*',
+            day=day,
+            hour='12',
+            minute='0',
             second='0',
         )
         job_id = self.get_job_name()

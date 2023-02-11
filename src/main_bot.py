@@ -135,8 +135,8 @@ async def payment_delete(message: types.Message):
     bot_text = list()
     try:
         user: User = User.get(telegram_id=message.from_user.id)
-        payment_number = int(message.text)
-        delete_result = user.delete_payment(payment_number)
+        payment: Payment = user.get_payment_list()[int(message.text)-1]
+        delete_result = bool(payment.delete_instance(True))
         if delete_result:
             bot_text.append('Удалено выполнено')
         else:
