@@ -1,11 +1,11 @@
 import time
-from contextlib import suppress
 
 from pytz import utc
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.triggers.cron import CronTrigger
+
 from utils.settings import dp, logging, get_day_word, PAYMENTS, CACHE_CLEAR_TIMER
 from src.buttons import get_main_markup
 

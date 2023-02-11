@@ -4,10 +4,11 @@ from datetime import datetime
 from aiogram import executor, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
+
 from utils.settings import logging, bot, dp, PAYMENTS
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
-from utils.db import User, Payment, Notification
+from utils.db import User, Payment
 
 
 logger = logging.getLogger(__name__)
