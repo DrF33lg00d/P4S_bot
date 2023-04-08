@@ -24,12 +24,10 @@ async def start(message: types.Message):
     user: User = User.get(telegram_id=message.from_user.id)
     logger.debug(f'User "{user.id}" choose /start command')
     del user
-    await message.reply('Hello there!')
     await main_buttons(message)
 
 async def main_buttons(message: types.Message):
-    await bot.send_message(
-        message.chat.id,
+    await message.answer(
         'Чего изволите?',
         reply_markup=get_main_markup()
     )
