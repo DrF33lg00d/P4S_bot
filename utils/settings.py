@@ -2,9 +2,10 @@ import logging
 from contextlib import suppress
 from collections import defaultdict
 
-from peewee import SqliteDatabase
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from peewee import SqliteDatabase
+from playhouse.migrate import SqliteMigrator
 
 
 API_KEY = 'SOBAKA_BABAKA'
@@ -12,6 +13,7 @@ PAYMENTS = defaultdict(dict)
 CACHE_CLEAR_TIMER = 300
 
 database = SqliteDatabase('default.db')
+migrator = SqliteMigrator(database)
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
