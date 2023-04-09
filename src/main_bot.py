@@ -7,7 +7,10 @@ from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
 
 from utils.settings import logging, bot, dp, PAYMENTS, get_day_word
 from src.states import MainStates, NotificationStates, PaymentStates
-from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
+from src.buttons import (
+    get_main_markup, get_admin_markup, get_payments_markup,
+    get_notifications_markup, Button,
+    )
 from utils.db import User, Payment, Notification
 
 
@@ -27,10 +30,17 @@ async def start(message: types.Message):
     await main_buttons(message)
 
 async def main_buttons(message: types.Message):
-    await message.answer(
-        'Чего изволите?',
-        reply_markup=get_main_markup()
+    user: User = User.get_or_none(telegram_id=message.from_user.id)
+    if user and user.is_admin:
+        await message.answer(
+        'Чего изволите, мой господин?',
+        reply_markup=get_admin_markup()
     )
+    else:
+        await message.answer(
+            'Чего изволите?',
+            reply_markup=get_main_markup()
+        )
 
 
 @dp.message_handler(Text(contains=[Button.rename]))
