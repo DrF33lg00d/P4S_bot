@@ -60,8 +60,8 @@ async def pre_broadcast(message: types.Message):
 @dp.message_handler(state=MainStates.broadcast)
 async def broadcast(message: types.Message, state: FSMContext):
     users: list[User] = User.select()
-    with suppress(exceptions.UserDeactivated):
-        for user in users:
+    for user in users:
+        with suppress(exceptions.UserDeactivated):
             await bot.send_message(
                 user.telegram_id,
                 message.text,
