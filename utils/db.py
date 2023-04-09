@@ -4,7 +4,7 @@ from typing import Optional
 
 from peewee import (
     Model, CharField, AutoField, IntegerField, FloatField, DateField,
-    ForeignKeyField, IntegrityError
+    BooleanField, ForeignKeyField, IntegrityError,
 )
 from apscheduler.triggers.cron import CronTrigger
 
@@ -21,6 +21,7 @@ class User(BaseModel):
     id = AutoField()
     telegram_id = IntegerField(unique=True)
     username = CharField(default='Default User')
+    is_admin = BooleanField(default=False)
 
     def get_payment_list(self) -> list[object]:
         payments: Payment = (Payment.select()
