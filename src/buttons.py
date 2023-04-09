@@ -4,6 +4,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 class Button:
     rename = 'Изменить имя'
     payments = 'Список сервисов'
+    broadcast = 'Создать глобальное уведомление'
     notifications = 'Список уведомлений'
     add_new_payment = 'Добавить'
     delete_payment = 'Удалить'
@@ -17,6 +18,12 @@ def get_main_markup() -> ReplyKeyboardMarkup:
     user_rename = KeyboardButton(Button.rename)
     payments_list = KeyboardButton(Button.payments)
     markup.add(user_rename, payments_list)
+    return markup
+
+
+def get_admin_markup() -> ReplyKeyboardMarkup:
+    markup = get_main_markup()
+    markup.add(KeyboardButton(Button.broadcast))
     return markup
 
 

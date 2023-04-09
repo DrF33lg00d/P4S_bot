@@ -7,7 +7,10 @@ from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
 
 from utils.settings import logging, bot, dp, PAYMENTS, get_day_word
 from src.states import MainStates, NotificationStates, PaymentStates
-from src.buttons import get_main_markup, get_payments_markup, get_notifications_markup, Button
+from src.buttons import (
+    get_main_markup, get_admin_markup, get_payments_markup,
+    get_notifications_markup, Button,
+    )
 from utils.db import User, Payment, Notification
 
 
@@ -24,16 +27,48 @@ async def start(message: types.Message):
     user: User = User.get(telegram_id=message.from_user.id)
     logger.debug(f'User "{user.id}" choose /start command')
     del user
-    await message.reply('Hello there!')
     await main_buttons(message)
 
 async def main_buttons(message: types.Message):
-    await bot.send_message(
-        message.chat.id,
-        'Чего изволите?',
-        reply_markup=get_main_markup()
+    user: User = User.get_or_none(telegram_id=message.from_user.id)
+    if user and user.is_admin:
+        await message.answer(
+        'Чего изволите, мой господин?',
+        reply_markup=get_admin_markup()
     )
+    else:
+        await message.answer(
+            'Чего изволите?',
+            reply_markup=get_main_markup()
+        )
 
+
+@dp.message_handler(Text(contains=[Button.broadcast]))
+async def pre_broadcast(message: types.Message):
+    await message.reply(
+        'Напиши, что хочешь сообщить всем пользователям.',
+        reply_markup=types.ReplyKeyboardRemove()
+    )
+    await MainStates.broadcast.set()
+    user: User = User.get(telegram_id=message.from_user.id)
+    logger.debug(f'User-{user.id} wants to broadcast')
+    del user
+
+
+@dp.message_handler(state=MainStates.broadcast)
+async def broadcast(message: types.Message, state: FSMContext):
+    users: list[User] = User.select()
+    for user in users:
+        await bot.send_message(
+            user.telegram_id,
+            message.text,
+        )
+    await state.finish()
+    del users
+    user: User = User.get(telegram_id=message.from_user.id)
+    logger.debug(f'User-{user.id} sends message by broadcast')
+    await main_buttons(message)
+    del user
 
 @dp.message_handler(Text(contains=[Button.rename]))
 async def pre_change_name(message: types.Message):
