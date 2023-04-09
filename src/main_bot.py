@@ -1,9 +1,11 @@
 import time
 from datetime import datetime
+from contextlib import suppress
 
 from aiogram import executor, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
+from aiogram.utils import exceptions
 
 from utils.settings import logging, bot, dp, PAYMENTS, get_day_word
 from src.states import MainStates, NotificationStates, PaymentStates
@@ -58,11 +60,12 @@ async def pre_broadcast(message: types.Message):
 @dp.message_handler(state=MainStates.broadcast)
 async def broadcast(message: types.Message, state: FSMContext):
     users: list[User] = User.select()
-    for user in users:
-        await bot.send_message(
-            user.telegram_id,
-            message.text,
-        )
+    with suppress(exceptions.UserDeactivated):
+        for user in users:
+            await bot.send_message(
+                user.telegram_id,
+                message.text,
+            )
     await state.finish()
     del users
     user: User = User.get(telegram_id=message.from_user.id)
