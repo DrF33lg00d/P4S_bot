@@ -4,6 +4,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 class MainStates(StatesGroup):
     main_menu = State()
     change_name = State()
+    broadcast = State()
 
 
 class NotificationStates(StatesGroup):

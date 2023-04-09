@@ -43,6 +43,33 @@ async def main_buttons(message: types.Message):
         )
 
 
+@dp.message_handler(Text(contains=[Button.broadcast]))
+async def pre_broadcast(message: types.Message):
+    await message.reply(
+        'Напиши, что хочешь сообщить всем пользователям.',
+        reply_markup=types.ReplyKeyboardRemove()
+    )
+    await MainStates.broadcast.set()
+    user: User = User.get(telegram_id=message.from_user.id)
+    logger.debug(f'User-{user.id} wants to broadcast')
+    del user
+
+
+@dp.message_handler(state=MainStates.broadcast)
+async def broadcast(message: types.Message, state: FSMContext):
+    users: list[User] = User.select()
+    for user in users:
+        await bot.send_message(
+            user.telegram_id,
+            message.text,
+        )
+    await state.finish()
+    del users
+    user: User = User.get(telegram_id=message.from_user.id)
+    logger.debug(f'User-{user.id} sends message by broadcast')
+    await main_buttons(message)
+    del user
+
 @dp.message_handler(Text(contains=[Button.rename]))
 async def pre_change_name(message: types.Message):
     user: User = User.get(telegram_id=message.from_user.id)
