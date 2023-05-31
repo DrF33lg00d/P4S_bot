@@ -6,12 +6,14 @@ from aiogram import executor, types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
 from aiogram.utils import exceptions
+from aiogram.utils.callback_data import CallbackData
 
 from utils.settings import logging, bot, dp, PAYMENTS, get_day_word
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import (
     get_main_markup, get_admin_markup, get_payments_markup,
     get_notifications_markup, Button,
+    get_services_markup, get_service_markup,
     )
 from utils.db import User, Payment, Notification
 
@@ -102,7 +104,7 @@ async def change_name(message: types.Message, state: FSMContext):
 @dp.message_handler(Text(contains=[Button.payments]))
 @dp.message_handler(Text(contains=[Button.payments]), state=PaymentStates.list)
 async def payments_list(message: types.Message):
-    user: User = User.get(telegram_id=message.from_user.id)
+    user: User = User.get(telegram_id=message.chat.id)
     logger.debug(f'User "{user.id}" select payments list')
     payments = [
         f'{count + 1}.\t{payment.description}, {payment.date.day} числа'
@@ -112,12 +114,39 @@ async def payments_list(message: types.Message):
         bot_text = '\n'.join(['Твой список платежей:'] + payments)
     else:
         bot_text = 'Твой список платежей пуст'
-    await bot.send_message(
-        message.chat.id,
+    await message.answer(
         bot_text,
-        reply_markup=get_payments_markup()
+        reply_markup=get_services_markup(payments)
     )
     await PaymentStates.list.set()
+    del payments, user, bot_text
+
+
+@dp.callback_query_handler(state=PaymentStates.list)
+@dp.callback_query_handler(Regexp('\d+'))
+async def show_payment(call: types.CallbackQuery):
+    user: User = User.get(telegram_id=call.message.chat.id)
+    payment: Payment = user.get_payment_list()[int(call.data)]
+    bot_text = [
+        'Информация о сервисе:',
+        payment.name,
+        f'Цена: {payment.price}',
+        f'{payment.date.day} числа'
+        ]
+    await call.message.edit_text(
+        '\n'.join(bot_text),
+        reply_markup=get_service_markup()
+    )
+    await PaymentStates.select.set()
+    del payment, user, bot_text
+
+
+@dp.callback_query_handler(state=PaymentStates.select)
+@dp.callback_query_handler(Text('back'), state=PaymentStates.select)
+async def show_payment(call: types.CallbackQuery):
+    await payments_list(call.message)
+
+
 
 
 @dp.message_handler(Text(contains=[Button.add_new_payment]), state=PaymentStates.list)

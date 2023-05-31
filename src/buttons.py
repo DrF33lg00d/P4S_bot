@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
 
 class Button:
@@ -46,6 +46,40 @@ def get_notifications_markup() -> ReplyKeyboardMarkup:
         KeyboardButton(Button.add_notification),
         KeyboardButton(Button.delete_notification),
         KeyboardButton(Button.move_back),
+    ]
+    markup.add(*buttons)
+    return markup
+
+
+def get_services_markup(list_services: list) -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup()
+    buttons = [
+        InlineKeyboardButton(
+            str(i+1),
+            callback_data=i,
+        )
+        for i in range(len(list_services))
+        ]
+    markup.add(*buttons)
+    add_button = InlineKeyboardButton('Добавить', callback_data='add_service')
+    markup.add(add_button)
+    return markup
+
+def get_service_markup() -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup(1)
+    buttons = [
+        InlineKeyboardButton(
+            'Добавить уведомление',
+            callback_data='add_notification',
+        ),
+        InlineKeyboardButton(
+            'Удалить',
+            callback_data='delete_service',
+        ),
+        InlineKeyboardButton(
+            'Вернуться',
+            callback_data='back',
+        ),
     ]
     markup.add(*buttons)
     return markup
