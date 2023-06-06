@@ -13,7 +13,7 @@ from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import (
     get_main_markup, get_admin_markup, get_payments_markup,
     get_notifications_markup, Button,
-    get_services_markup, get_service_markup, PaymentView, PaymentAction
+    get_services_markup, get_service_markup, PaymentView, PaymentAction, MainMenuCallback
     )
 from utils.db import User, Payment, Notification
 
@@ -48,14 +48,13 @@ async def main_buttons(message: types.Message):
         )
 
 
-@dp.message_handler(Text(contains=[Button.broadcast]))
-async def pre_broadcast(message: types.Message):
-    await message.reply(
+@dp.callback_query_handler(MainMenuCallback.filter(action=['broadcast']))
+async def pre_broadcast(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
+    await call.message.edit_text(
         'Напиши, что хочешь сообщить всем пользователям.',
-        reply_markup=types.ReplyKeyboardRemove()
     )
-    await MainStates.broadcast.set()
-    user: User = User.get(telegram_id=message.from_user.id)
+    await state.set_state(MainStates.broadcast)
+    user: User = User.get(telegram_id=call.message.from_user.id)
     logger.debug(f'User-{user.id} wants to broadcast')
     del user
 
