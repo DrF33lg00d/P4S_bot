@@ -16,6 +16,7 @@ class Button:
 MainMenuCallback = CallbackData('id', 'action')
 PaymentView = CallbackData('view', 'id')
 PaymentAction = CallbackData('id', 'action')
+NotificationAction = CallbackData('id', 'action')
 
 
 def get_main_markup() -> InlineKeyboardMarkup:
@@ -66,7 +67,9 @@ def get_services_markup(list_services: list) -> InlineKeyboardMarkup:
         ]
     markup.add(*buttons)
     add_button = InlineKeyboardButton('Добавить', callback_data=PaymentAction.new(action='add'))
+    back_button = InlineKeyboardButton('Вернуться', callback_data=PaymentAction.new(action='back'))
     markup.add(add_button)
+    markup.add(back_button)
     return markup
 
 def get_service_markup() -> InlineKeyboardMarkup:

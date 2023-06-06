@@ -30,17 +30,21 @@ async def start(message: types.Message):
     User.create_or_update(message.from_user.id, message.from_user.username)
     user: User = User.get(telegram_id=message.from_user.id)
     logger.debug(f'User "{user.id}" choose /start command')
+    await main_menu(user, message)
     del user
-    await main_buttons(message)
 
 
 async def main_buttons(message: types.Message):
     user: User = User.get_or_none(telegram_id=message.from_user.id)
+    await main_menu(user, message)
+
+
+async def main_menu(user: User, message: types.Message):
     if user and user.is_admin:
         await message.answer(
-        'Чего изволите, мой господин?',
-        reply_markup=get_admin_markup()
-    )
+            'Чего изволите, мой господин?',
+            reply_markup=get_admin_markup()
+            )
     else:
         await message.answer(
             'Чего изволите?',
@@ -72,7 +76,7 @@ async def broadcast(message: types.Message, state: FSMContext):
     del users
     user: User = User.get(telegram_id=message.from_user.id)
     logger.debug(f'User-{user.id} sends message by broadcast')
-    await main_buttons(message)
+    await main_menu(user, message)
     del user
 
 
@@ -96,16 +100,15 @@ async def change_name(message: types.Message, state: FSMContext):
         f'Отлично, буду звать тебя "{user.username}"!'
     )
     await state.finish()
+    await main_menu(user, message)
     del user
-    await main_buttons(message)
 
 
-@dp.message_handler(Text(contains=[Button.payments]))
-@dp.message_handler(Text(contains=[Button.payments]), state=PaymentStates.list)
-@dp.callback_query_handler(PaymentAction.filter())
-async def payments_list(message: types.Message, state: FSMContext):
-    user: User = User.get(telegram_id=message.chat.id)
-    logger.debug(f'User "{user.id}" select payments list')
+@dp.callback_query_handler(MainMenuCallback.filter(action=['show_payments']))
+@dp.callback_query_handler(PaymentAction.filter(action=['back']))
+async def payments_list(call: types.CallbackQuery, state: FSMContext):
+    user: User = User.get(telegram_id=call.from_user.id)
+    logger.debug(f'User "{user.username}" select payments list')
     payments = [
         f'{count + 1}.\t{payment.description}, {payment.date.day} числа'
         for count, payment in enumerate(user.get_payment_list())
@@ -114,18 +117,17 @@ async def payments_list(message: types.Message, state: FSMContext):
         bot_text = '\n'.join(['Твой список платежей:'] + payments)
     else:
         bot_text = 'Твой список платежей пуст'
-    await message.answer(
+    await call.message.edit_text(
         bot_text,
         reply_markup=get_services_markup(payments),
     )
     await state.set_state(PaymentStates.list)
-    await state.update_data(user_id=user.id)
-    del payments, bot_text
+    del payments, bot_text, user
 
 
 @dp.callback_query_handler(PaymentView.filter(), state=PaymentStates.list)
 async def show_payment(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
-    user: User = User.get(telegram_id=call.message.chat.id)
+    user: User = User.get(telegram_id=call.from_user.id)
     payment: Payment = user.get_payment_list()[int(callback_data.get('id'))]
     bot_text = [
         'Информация о сервисе:',
@@ -139,6 +141,14 @@ async def show_payment(call: types.CallbackQuery, state: FSMContext, callback_da
     )
     await state.set_state(PaymentStates.select)
     del payment, bot_text
+
+@dp.callback_query_handler(MainMenuCallback.filter(action=['back']), state=PaymentStates.list)
+async def back_to_main_menu(call: types.CallbackQuery, state: FSMContext):
+    user: User = User.get(telegram_id=call.from_user.id)
+    await state.finish()
+    await call.message.delete()
+    await main_menu(user, call.message)
+
 
 # @dp.callback_query_handler(state=PaymentStates.select)
 # @dp.callback_query_handler(Text('add_notification'), state=PaymentStates.select)
@@ -233,7 +243,7 @@ async def payment_delete(message: types.Message):
 @dp.message_handler(Text(contains=[Button.move_back]), state=PaymentStates.list)
 async def move_back(message: types.Message, state: FSMContext):
     await state.finish()
-    await main_buttons(message)
+    # await main_buttons(message)
 
 
 @dp.message_handler(Text(contains=[Button.move_back]), state=NotificationStates.list)
