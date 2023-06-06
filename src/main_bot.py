@@ -34,11 +34,6 @@ async def start(message: types.Message):
     del user
 
 
-async def main_buttons(message: types.Message):
-    user: User = User.get_or_none(telegram_id=message.from_user.id)
-    await main_menu(user, message)
-
-
 async def main_menu(user: User, message: types.Message):
     if user and user.is_admin:
         await message.answer(
@@ -126,21 +121,25 @@ async def payments_list(call: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(PaymentView.filter(), state=PaymentStates.list)
-async def show_payment(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
+async def select_payment(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
     user: User = User.get(telegram_id=call.from_user.id)
     payment: Payment = user.get_payment_list()[int(callback_data.get('id'))]
+    await call.message.edit_text(
+        get_payment_message(payment),
+        reply_markup=get_service_markup()
+    )
+    await state.set_state(PaymentStates.select)
+    del payment
+
+def get_payment_message(payment: Payment):
     bot_text = [
         'Информация о сервисе:',
         payment.name,
         f'Цена: {payment.price}',
         f'{payment.date.day} числа'
         ]
-    await call.message.edit_text(
-        '\n'.join(bot_text),
-        reply_markup=get_service_markup()
-    )
-    await state.set_state(PaymentStates.select)
-    del payment, bot_text
+    return '\n'.join(bot_text)
+
 
 @dp.callback_query_handler(MainMenuCallback.filter(action=['back']), state=PaymentStates.list)
 async def back_to_main_menu(call: types.CallbackQuery, state: FSMContext):
@@ -150,8 +149,48 @@ async def back_to_main_menu(call: types.CallbackQuery, state: FSMContext):
     await main_menu(user, call.message)
 
 
-# @dp.callback_query_handler(state=PaymentStates.select)
-# @dp.callback_query_handler(Text('add_notification'), state=PaymentStates.select)
+@dp.callback_query_handler(PaymentAction.filter(action=['add']), state=PaymentStates.list)
+async def pre_payment_add(call: types.CallbackQuery, state: FSMContext):
+    bot_text = [
+        'Добавьте платёж в следующем формате:',
+        'Название,Описание,Цена,год-месяц-день',
+        '',
+        'Примеры:',
+        'Мобильный интернет,Оплата за мобильный интернет,450.35,2020-01-07',
+        'Я.Плюс,Оплата за подписку Яндекс.Плюс,300,2020-01-07',
+    ]
+    await call.message.edit_text(
+        '\n'.join(bot_text),
+    )
+    await state.set_state(PaymentStates.add)
+
+
+@dp.message_handler(state=PaymentStates.add)
+async def payment_add(message: types.Message, state: FSMContext):
+    user: User = User.get(telegram_id=message.from_user.id)
+    try:
+        name, description, price, date_payment = message.text.replace(', ', ',').split(',')
+        date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
+        price = float(price)
+        payment: Payment = user.add_payment(name, description, price, date_payment)
+        logger.debug(f'Add payment "{name}" for user {user.id}')
+
+        bot_message = f'Новый сервис "{payment.name}" добавлен!'
+        await message.answer(
+            f'{bot_message}\n{get_payment_message(payment)}',
+            reply_markup=get_service_markup(),
+        )
+        await state.set_state(PaymentStates.select)
+        del name, description, price, date_payment, user, payment
+    except (ValueError, TypeError) as exc:
+        logger.error(f'Cannot parse "{message.text}"')
+        bot_message = 'Что-то пошло не так. Попробуйте ещё раз.'
+        await message.answer(
+            bot_message,
+        )
+        await state.finish()
+        await main_menu(user, message)
+    del bot_message
 
 
 
@@ -164,48 +203,12 @@ async def back_to_main_menu(call: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(PaymentAction.filter(action=['back']), state=PaymentStates.select)
 async def back_to_list_payments(call: types.CallbackQuery, state: FSMContext):
     await state.set_state(PaymentStates.list)
-    await payments_list(call.message, state)
+    await payments_list(call, state)
 
 
 
 
-@dp.message_handler(Text(contains=[Button.add_new_payment]), state=PaymentStates.list)
-async def pre_payment_add(message: types.Message):
-    bot_text = [
-        'Добавьте платёж в следующем формате:',
-        'Интернет,Оплата за интернет,650,2020-01-07',
-        '',
-        'Примеры:',
-        'Мобильный интернет,Оплата за мобильный интернет,450.35,2020-01-07',
-        'Я.Плюс,Оплата за подписку Яндекс.Плюс,300,2020-01-07',
-    ]
-    await message.reply(
-        '\n'.join(bot_text),
-        reply_markup=get_payments_markup(),
-    )
-    await PaymentStates.add.set()
 
-
-@dp.message_handler(state=PaymentStates.add)
-async def payment_add(message: types.Message):
-    try:
-        name, description, price, date_payment = message.text.replace(', ', ',').split(',')
-        date_payment = datetime.strptime(date_payment, '%Y-%m-%d')
-        price = float(price)
-
-        user: User = User.get(telegram_id=message.from_user.id)
-        payment: Payment = user.add_payment(name, description, price, date_payment)
-        logger.debug(f'Add payment "{name}" for user {user.id}')
-        bot_message = f'Новый сервис "{payment.name}" добавлена!'
-    except (ValueError, TypeError) as exc:
-        logger.error(f'Cannot parse "{message.text}"')
-        bot_message = 'Что-то пошло не так. Попробуйте ещё раз.'
-    await bot.send_message(
-        message.chat.id,
-        bot_message,
-        reply_markup=get_payments_markup()
-    )
-    await PaymentStates.list.set()
 
 
 @dp.message_handler(Text(contains=[Button.delete_payment]), state=PaymentStates.list)
