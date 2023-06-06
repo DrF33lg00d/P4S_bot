@@ -4,16 +4,16 @@ from contextlib import suppress
 
 from aiogram import executor, types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp
+from aiogram.dispatcher.filters import Text, IsReplyFilter, Regexp, ContentTypeFilter
 from aiogram.utils import exceptions
-from aiogram.utils.callback_data import CallbackData
+from aiogram.utils.callback_data import CallbackData, CallbackDataFilter
 
 from utils.settings import logging, bot, dp, PAYMENTS, get_day_word
 from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import (
     get_main_markup, get_admin_markup, get_payments_markup,
     get_notifications_markup, Button,
-    get_services_markup, get_service_markup,
+    get_services_markup, get_service_markup, PaymentView, PaymentAction
     )
 from utils.db import User, Payment, Notification
 
@@ -32,6 +32,7 @@ async def start(message: types.Message):
     logger.debug(f'User "{user.id}" choose /start command')
     del user
     await main_buttons(message)
+
 
 async def main_buttons(message: types.Message):
     user: User = User.get_or_none(telegram_id=message.from_user.id)
@@ -103,7 +104,8 @@ async def change_name(message: types.Message, state: FSMContext):
 
 @dp.message_handler(Text(contains=[Button.payments]))
 @dp.message_handler(Text(contains=[Button.payments]), state=PaymentStates.list)
-async def payments_list(message: types.Message):
+@dp.callback_query_handler(PaymentAction.filter())
+async def payments_list(message: types.Message, state: FSMContext):
     user: User = User.get(telegram_id=message.chat.id)
     logger.debug(f'User "{user.id}" select payments list')
     payments = [
@@ -116,17 +118,17 @@ async def payments_list(message: types.Message):
         bot_text = 'Твой список платежей пуст'
     await message.answer(
         bot_text,
-        reply_markup=get_services_markup(payments)
+        reply_markup=get_services_markup(payments),
     )
-    await PaymentStates.list.set()
-    del payments, user, bot_text
+    await state.set_state(PaymentStates.list)
+    await state.update_data(user_id=user.id)
+    del payments, bot_text
 
 
-@dp.callback_query_handler(state=PaymentStates.list)
-@dp.callback_query_handler(Regexp('\d+'))
-async def show_payment(call: types.CallbackQuery):
+@dp.callback_query_handler(PaymentView.filter(), state=PaymentStates.list)
+async def show_payment(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
     user: User = User.get(telegram_id=call.message.chat.id)
-    payment: Payment = user.get_payment_list()[int(call.data)]
+    payment: Payment = user.get_payment_list()[int(callback_data.get('id'))]
     bot_text = [
         'Информация о сервисе:',
         payment.name,
@@ -137,14 +139,24 @@ async def show_payment(call: types.CallbackQuery):
         '\n'.join(bot_text),
         reply_markup=get_service_markup()
     )
-    await PaymentStates.select.set()
-    del payment, user, bot_text
+    await state.set_state(PaymentStates.select)
+    del payment, bot_text
+
+# @dp.callback_query_handler(state=PaymentStates.select)
+# @dp.callback_query_handler(Text('add_notification'), state=PaymentStates.select)
 
 
-@dp.callback_query_handler(state=PaymentStates.select)
-@dp.callback_query_handler(Text('back'), state=PaymentStates.select)
-async def show_payment(call: types.CallbackQuery):
-    await payments_list(call.message)
+
+# @dp.callback_query_handler(state=PaymentStates.select)
+# @dp.callback_query_handler(Text('delete_service'), state=PaymentStates.select)
+# async def delete_payment(call: types.CallbackQuery):
+#     await payments_list(call.message)
+
+
+@dp.callback_query_handler(PaymentAction.filter(action=['back']), state=PaymentStates.select)
+async def back_to_list_payments(call: types.CallbackQuery, state: FSMContext):
+    await state.set_state(PaymentStates.list)
+    await payments_list(call.message, state)
 
 
 

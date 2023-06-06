@@ -1,4 +1,5 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.callback_data import CallbackData
 
 
 class Button:
@@ -12,18 +13,22 @@ class Button:
     delete_notification = 'Удалить'
     move_back = 'Вернуться'
 
+MainMenuCallback = CallbackData('id', 'action')
+PaymentView = CallbackData('view', 'id')
+PaymentAction = CallbackData('id', 'action')
 
-def get_main_markup() -> ReplyKeyboardMarkup:
-    markup = ReplyKeyboardMarkup(row_width=2)
-    user_rename = KeyboardButton(Button.rename)
-    payments_list = KeyboardButton(Button.payments)
+
+def get_main_markup() -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup(row_width=2)
+    user_rename = InlineKeyboardButton(Button.rename, callback_data=MainMenuCallback.new(action='change_name'))
+    payments_list = InlineKeyboardButton(Button.payments, callback_data=MainMenuCallback.new(action='show_payments'))
     markup.add(user_rename, payments_list)
     return markup
 
 
-def get_admin_markup() -> ReplyKeyboardMarkup:
+def get_admin_markup() -> InlineKeyboardMarkup:
     markup = get_main_markup()
-    markup.add(KeyboardButton(Button.broadcast))
+    markup.add(InlineKeyboardButton(Button.broadcast, callback_data=MainMenuCallback.new(action='broadcast')))
     return markup
 
 
@@ -50,18 +55,17 @@ def get_notifications_markup() -> ReplyKeyboardMarkup:
     markup.add(*buttons)
     return markup
 
-
 def get_services_markup(list_services: list) -> InlineKeyboardMarkup:
     markup = InlineKeyboardMarkup()
     buttons = [
         InlineKeyboardButton(
             str(i+1),
-            callback_data=i,
+            callback_data=PaymentView.new(id=i),
         )
         for i in range(len(list_services))
         ]
     markup.add(*buttons)
-    add_button = InlineKeyboardButton('Добавить', callback_data='add_service')
+    add_button = InlineKeyboardButton('Добавить', callback_data=PaymentAction.new(action='add'))
     markup.add(add_button)
     return markup
 
@@ -70,15 +74,15 @@ def get_service_markup() -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(
             'Добавить уведомление',
-            callback_data='add_notification',
+            callback_data=PaymentAction.new(action='add_notification'),
         ),
         InlineKeyboardButton(
             'Удалить',
-            callback_data='delete_service',
+            callback_data=PaymentAction.new(action='delete_service'),
         ),
         InlineKeyboardButton(
             'Вернуться',
-            callback_data='back',
+            callback_data=PaymentAction.new(action='back'),
         ),
     ]
     markup.add(*buttons)
