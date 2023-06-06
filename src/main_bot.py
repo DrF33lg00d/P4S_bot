@@ -54,7 +54,7 @@ async def pre_broadcast(call: types.CallbackQuery, state: FSMContext, callback_d
         'Напиши, что хочешь сообщить всем пользователям.',
     )
     await state.set_state(MainStates.broadcast)
-    user: User = User.get(telegram_id=call.message.from_user.id)
+    user: User = User.get(telegram_id=call.from_user.id)
     logger.debug(f'User-{user.id} wants to broadcast')
     del user
 
@@ -75,21 +75,20 @@ async def broadcast(message: types.Message, state: FSMContext):
     await main_buttons(message)
     del user
 
-@dp.message_handler(Text(contains=[Button.rename]))
-async def pre_change_name(message: types.Message):
-    user: User = User.get(telegram_id=message.from_user.id)
+
+@dp.callback_query_handler(MainMenuCallback.filter(action=['change_name']))
+async def pre_change_name(call: types.CallbackQuery, state: FSMContext):
+    user: User = User.get(telegram_id=call.from_user.id)
     logger.debug(f'User "{user.id}" wants change username')
-    del user
-    await message.reply(
+    await call.message.edit_text(
         'Ну-ка, и как ты хочешь называться теперь?',
-        reply_markup=types.ReplyKeyboardRemove()
     )
-    await MainStates.change_name.set()
+    await state.set_state(MainStates.change_name)
 
 
 @dp.message_handler(state=MainStates.change_name)
 async def change_name(message: types.Message, state: FSMContext):
-    user: User = User.get_or_create(telegram_id=message.from_user.id)[0]
+    user: User = User.get(telegram_id=message.from_user.id)
     user.change_username(message.text)
     logger.debug(f'User "{user.id}" change username to "{message.text}"')
     await bot.send_message(
