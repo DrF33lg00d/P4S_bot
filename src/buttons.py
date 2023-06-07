@@ -81,6 +81,10 @@ def get_service_markup() -> InlineKeyboardMarkup:
             callback_data=NotificationAction.new(action='add'),
         ),
         InlineKeyboardButton(
+            'Удалить уведомление',
+            callback_data=NotificationAction.new(action='delete'),
+        ),
+        InlineKeyboardButton(
             'Удалить',
             callback_data=PaymentAction.new(action='delete'),
         ),
@@ -100,6 +104,19 @@ def get_notification_days_add() -> InlineKeyboardMarkup:
             callback_data=NotificationDays.new(id=i),
         )
         for i in range(1, 11)
+    ]
+    markup.add(*buttons)
+    return markup
+
+
+def get_notification_days_delete(days_list: list[int]) -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup(5)
+    buttons = [
+        InlineKeyboardButton(
+            day,
+            callback_data=NotificationDays.new(id=day),
+        )
+        for day in days_list
     ]
     markup.add(*buttons)
     return markup

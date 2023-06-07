@@ -13,7 +13,8 @@ from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import (
     get_main_markup, get_admin_markup, get_payments_markup,
     get_notifications_markup, Button,
-    get_services_markup, get_service_markup, get_notification_days_add,
+    get_services_markup, get_service_markup,
+    get_notification_days_add, get_notification_days_delete,
     PaymentView, PaymentAction, MainMenuCallback, NotificationAction, NotificationDays
     )
 from utils.db import User, Payment, Notification
@@ -258,36 +259,40 @@ async def notification_add(call: types.CallbackQuery, state: FSMContext, callbac
     del payment
 
 
-@dp.message_handler(Text(contains=[Button.delete_notification]),state=NotificationStates.list)
-async def pre_notification_delete(message: types.Message):
-    await message.reply(
+@dp.callback_query_handler(NotificationAction.filter(action=['delete']), state=PaymentStates.select)
+async def pre_notification_delete(call: types.CallbackQuery, state: FSMContext):
+    user: User = User.get(telegram_id=call.from_user.id)
+    user_data = await state.get_data()
+    payment_ordered_number = user_data.get('payment_ordered_number')
+    payment: Payment = user.get_payment_list()[payment_ordered_number]
+    notification_days = [day.day_before_payment for day in payment.get_notification_list()]
+    await call.message.edit_text(
         'Какое уведомление из списка хочешь удалить?',
-        reply_markup=types.ForceReply(),
+        reply_markup=get_notification_days_delete(notification_days),
     )
-    await NotificationStates.delete.set()
+    await state.set_state(NotificationStates.delete)
 
 
-@dp.message_handler(state=NotificationStates.delete)
-async def notification_delete(message: types.Message):
+@dp.callback_query_handler(NotificationDays.filter(), state=NotificationStates.delete)
+async def notification_delete(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
+    await call.message.edit_text('Удаление...')
+    user_data = await state.get_data()
+    payment_ordered_number = user_data.get('payment_ordered_number')
+    user: User = User.get(telegram_id=call.from_user.id)
+    payment: Payment = user.get_payment_list()[payment_ordered_number]
+    notification_day = int(callback_data.get('id'))
     try:
-        payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
-        notification_number = int(message.text) - 1
-        assert payment.delete_notification(notification_number)
+        assert payment.delete_notification(notification_day)
+        bot_message = 'Уведомление удалено!'
     except (TypeError, IndexError, TypeError, AssertionError):
-        await bot.send_message(
-            message.chat.id,
-            'Ошибка удаления уведомления, попробуйте ещё раз',
-            reply_markup=get_notifications_markup(),
-        )
-        await bot.set_state(message.from_user.id, NotificationStates.list, message.chat.id)
-        return
-    PAYMENTS.get(message.from_user.id)['timestamp'] = time.time()
-    await bot.send_message(
-            message.chat.id,
-            'Уведомление удалено!',
-            reply_markup=get_notifications_markup(),
+        bot_message = 'Ошибка удаления уведомления, попробуйте ещё раз'
+    await call.message.edit_text(
+        f'{bot_message}\n{get_payment_message(payment)}',
+        reply_markup=get_service_markup()
     )
-    await NotificationStates.list.set()
+    await state.set_state(PaymentStates.select)
+    del payment
+
 
 
 @dp.message_handler(state=NotificationStates.list)
