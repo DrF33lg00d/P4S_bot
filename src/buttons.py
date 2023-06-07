@@ -15,9 +15,9 @@ class Button:
 
 MainMenuCallback = CallbackData('id', 'action')
 PaymentView = CallbackData('view', 'id')
-PaymentAction = CallbackData('id', 'action')
-NotificationAction = CallbackData('id', 'action')
-NotificationDays = CallbackData('add', 'id')
+PaymentAction = CallbackData('payment', 'action')
+NotificationAction = CallbackData('notification', 'action')
+NotificationDays = CallbackData('notification', 'day')
 
 
 def get_main_markup() -> InlineKeyboardMarkup:
@@ -74,7 +74,7 @@ def get_services_markup(list_services: list) -> InlineKeyboardMarkup:
     return markup
 
 def get_service_markup() -> InlineKeyboardMarkup:
-    markup = InlineKeyboardMarkup(1)
+    markup = InlineKeyboardMarkup(2)
     buttons = [
         InlineKeyboardButton(
             'Добавить уведомление',
@@ -101,7 +101,7 @@ def get_notification_days_add() -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(
             i,
-            callback_data=NotificationDays.new(id=i),
+            callback_data=NotificationDays.new(day=i),
         )
         for i in range(1, 11)
     ]
@@ -114,7 +114,7 @@ def get_notification_days_delete(days_list: list[int]) -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(
             day,
-            callback_data=NotificationDays.new(id=day),
+            callback_data=NotificationDays.new(day=day),
         )
         for day in days_list
     ]

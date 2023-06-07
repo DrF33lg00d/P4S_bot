@@ -137,11 +137,18 @@ async def select_payment(call: types.CallbackQuery, state: FSMContext, callback_
 
 def get_payment_message(payment: Payment):
     bot_text = [
-        'Информация о сервисе:',
-        payment.name,
+        f'Информация о сервисе: {payment.name}',
         f'Цена: {payment.price}',
         f'{payment.date.day} числа'
         ]
+    notifications: list[Notification] = payment.get_notification_list()
+    if notifications:
+        notifications_message = [
+            f'\t{n.day_before_payment} {get_day_word(n.day_before_payment)}'
+            for n in notifications
+        ]
+        bot_text.append('Уведомления придут за:')
+        bot_text.append('\n'.join(notifications_message))
     return '\n'.join(bot_text)
 
 
@@ -245,7 +252,7 @@ async def notification_add(call: types.CallbackQuery, state: FSMContext, callbac
     payment_ordered_number = user_data.get('payment_ordered_number')
     user: User = User.get(telegram_id=call.from_user.id)
     payment: Payment = user.get_payment_list()[payment_ordered_number]
-    day_before_notification = int(callback_data.get('id'))
+    day_before_notification = int(callback_data.get('day'))
     try:
         payment.add_notification(day_before_notification)
         bot_message = 'Уведомление добавлено!'
@@ -280,12 +287,15 @@ async def notification_delete(call: types.CallbackQuery, state: FSMContext, call
     payment_ordered_number = user_data.get('payment_ordered_number')
     user: User = User.get(telegram_id=call.from_user.id)
     payment: Payment = user.get_payment_list()[payment_ordered_number]
-    notification_day = int(callback_data.get('id'))
+    notification_day = int(callback_data.get('day'))
     try:
         assert payment.delete_notification(notification_day)
         bot_message = 'Уведомление удалено!'
     except (TypeError, IndexError, TypeError, AssertionError):
         bot_message = 'Ошибка удаления уведомления, попробуйте ещё раз'
+    except Exception as e:
+        bot_message = 'Ошибка удаления уведомления, попробуйте ещё раз'
+        print(e)
     await call.message.edit_text(
         f'{bot_message}\n{get_payment_message(payment)}',
         reply_markup=get_service_markup()

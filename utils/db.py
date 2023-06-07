@@ -88,7 +88,7 @@ class Payment(BaseModel):
 
     def delete_notification(self, notification_day: int) -> bool:
         try:
-            notification = [filter(lambda n: n.day_before_payment==notification_day, self.get_notification_list())]
+            notification: Notification = list(filter(lambda n: n.day_before_payment==notification_day, self.get_notification_list()))[0]
         except IndexError:
             return False
         notification.delete_notif_job()
