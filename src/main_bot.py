@@ -215,10 +215,16 @@ async def delete_payment(call: types.CallbackQuery, state: FSMContext):
     await call.answer('\n'.join(bot_text))
 
     await state.set_state(PaymentStates.list)
-    await payments_list(call, state)
     await state.reset_data()
+    await payments_list(call, state)
     del bot_text, user_data, payment_ordered_number
     del user, payment, delete_result
+
+
+@dp.callback_query_handler(PaymentAction.filter(action=['back']), state=PaymentStates.select)
+async def back_to_payment_list(call: types.CallbackQuery, state: FSMContext):
+    await payments_list(call, state)
+
 
 
 @dp.message_handler(Text(contains=[Button.notifications]), state=PaymentStates.list)
