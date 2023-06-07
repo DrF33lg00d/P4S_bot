@@ -294,50 +294,6 @@ async def notification_delete(call: types.CallbackQuery, state: FSMContext, call
     del payment
 
 
-
-@dp.message_handler(state=NotificationStates.list)
-@dp.message_handler(Regexp(r'^\d+$'), state=PaymentStates.select)
-async def notification_list(message: types.Message):
-    bot_text = list()
-    notification_list = list()
-    error: bool = False
-    user: User = User.get(telegram_id=message.from_user.id)
-    try:
-        payment: Payment = user.get_payment_list()[int(message.text)-1]
-        notification_list: list[Notification] = payment.get_notification_list()
-    except ValueError:
-        bot_text.append('Ошибка! Некорректный номер сервиса')
-        error = True
-    except IndexError:
-        bot_text.append('Ошибка! Такого номера сервиса нет')
-        error = True
-    if error:
-        await bot.send_message(
-            message.chat.id,
-            '\n'.join(bot_text),
-            reply_markup=get_payments_markup(),
-        )
-        await PaymentStates.list.set()
-    else:
-        PAYMENTS[message.from_user.id] = {
-            'payment': payment,
-            'timestamp': time.time()
-        }
-        if notification_list:
-            bot_text.append(f'Уведомления по сервису "{payment.name}" придут за:')
-            bot_text.extend([
-                f'{index+1}.\t{notif.day_before_payment} {get_day_word(notif.day_before_payment)}'
-                for index, notif in enumerate(notification_list)
-            ])
-        else:
-            bot_text.append('Уведомления отсутствуют')
-        await bot.send_message(
-            message.chat.id,
-            '\n'.join(bot_text),
-            reply_markup=get_notifications_markup(),
-        )
-        await NotificationStates.list.set()
-
 @dp.message_handler()
 async def cannot_parse(message: types.Message, state: FSMContext):
     await bot.send_message(
