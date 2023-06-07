@@ -122,13 +122,15 @@ async def payments_list(call: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(PaymentView.filter(), state=PaymentStates.list)
 async def select_payment(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
+    payment_ordered_number = int(callback_data.get('id'))
     user: User = User.get(telegram_id=call.from_user.id)
-    payment: Payment = user.get_payment_list()[int(callback_data.get('id'))]
+    payment: Payment = user.get_payment_list()[payment_ordered_number]
     await call.message.edit_text(
         get_payment_message(payment),
         reply_markup=get_service_markup()
     )
     await state.set_state(PaymentStates.select)
+    await state.update_data(payment_ordered_number=payment_ordered_number)
     del payment
 
 def get_payment_message(payment: Payment):
@@ -193,39 +195,14 @@ async def payment_add(message: types.Message, state: FSMContext):
     del bot_message
 
 
-
-# @dp.callback_query_handler(state=PaymentStates.select)
-# @dp.callback_query_handler(Text('delete_service'), state=PaymentStates.select)
-# async def delete_payment(call: types.CallbackQuery):
-#     await payments_list(call.message)
-
-
-@dp.callback_query_handler(PaymentAction.filter(action=['back']), state=PaymentStates.select)
-async def back_to_list_payments(call: types.CallbackQuery, state: FSMContext):
-    await state.set_state(PaymentStates.list)
-    await payments_list(call, state)
-
-
-
-
-
-
-
-@dp.message_handler(Text(contains=[Button.delete_payment]), state=PaymentStates.list)
-async def pre_payment_delete(message: types.Message):
-    await message.reply(
-        'Напиши номер сервиса, который хочешь удалить',
-        reply_markup=types.ForceReply(),
-    )
-    await PaymentStates.delete.set()
-
-
-@dp.message_handler(IsReplyFilter(True), state=PaymentStates.delete)
-async def payment_delete(message: types.Message):
+@dp.callback_query_handler(PaymentAction.filter(action=['delete']), state=PaymentStates.select)
+async def delete_payment(call: types.CallbackQuery, state: FSMContext):
     bot_text = list()
+    user_data = await state.get_data()
+    payment_ordered_number = user_data['payment_ordered_number']
     try:
-        user: User = User.get(telegram_id=message.from_user.id)
-        payment: Payment = user.get_payment_list()[int(message.text)-1]
+        user: User = User.get(telegram_id=call.from_user.id)
+        payment: Payment = user.get_payment_list()[payment_ordered_number]
         delete_result = bool(payment.delete_instance(True))
         if delete_result:
             bot_text.append('Удалено выполнено')
@@ -235,23 +212,13 @@ async def payment_delete(message: types.Message):
         bot_text.append('Ошибка! Некорректный номер сервиса')
     except IndexError:
         bot_text.append('Ошибка! Такого номера сервиса нет')
+    await call.answer('\n'.join(bot_text))
 
-    await message.reply(
-        '\n'.join(bot_text),
-        reply_markup=get_payments_markup(),
-    )
-    await PaymentStates.list.set()
-
-
-@dp.message_handler(Text(contains=[Button.move_back]), state=PaymentStates.list)
-async def move_back(message: types.Message, state: FSMContext):
-    await state.finish()
-    # await main_buttons(message)
-
-
-@dp.message_handler(Text(contains=[Button.move_back]), state=NotificationStates.list)
-async def move_back_to_payments(message: types.Message):
-    await payments_list(message)
+    await state.set_state(PaymentStates.list)
+    await payments_list(call, state)
+    await state.reset_data()
+    del bot_text, user_data, payment_ordered_number
+    del user, payment, delete_result
 
 
 @dp.message_handler(Text(contains=[Button.notifications]), state=PaymentStates.list)

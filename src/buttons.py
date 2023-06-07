@@ -81,7 +81,7 @@ def get_service_markup() -> InlineKeyboardMarkup:
         ),
         InlineKeyboardButton(
             'Удалить',
-            callback_data=PaymentAction.new(action='delete_service'),
+            callback_data=PaymentAction.new(action='delete'),
         ),
         InlineKeyboardButton(
             'Вернуться',
