@@ -17,6 +17,7 @@ MainMenuCallback = CallbackData('id', 'action')
 PaymentView = CallbackData('view', 'id')
 PaymentAction = CallbackData('id', 'action')
 NotificationAction = CallbackData('id', 'action')
+NotificationDays = CallbackData('add', 'id')
 
 
 def get_main_markup() -> InlineKeyboardMarkup:
@@ -77,7 +78,7 @@ def get_service_markup() -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(
             'Добавить уведомление',
-            callback_data=PaymentAction.new(action='add_notification'),
+            callback_data=NotificationAction.new(action='add'),
         ),
         InlineKeyboardButton(
             'Удалить',
@@ -87,6 +88,18 @@ def get_service_markup() -> InlineKeyboardMarkup:
             'Вернуться',
             callback_data=PaymentAction.new(action='back'),
         ),
+    ]
+    markup.add(*buttons)
+    return markup
+
+def get_notification_days_add() -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup(5)
+    buttons = [
+        InlineKeyboardButton(
+            i,
+            callback_data=NotificationDays.new(id=i),
+        )
+        for i in range(1, 11)
     ]
     markup.add(*buttons)
     return markup

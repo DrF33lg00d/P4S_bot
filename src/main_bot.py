@@ -13,7 +13,8 @@ from src.states import MainStates, NotificationStates, PaymentStates
 from src.buttons import (
     get_main_markup, get_admin_markup, get_payments_markup,
     get_notifications_markup, Button,
-    get_services_markup, get_service_markup, PaymentView, PaymentAction, MainMenuCallback
+    get_services_markup, get_service_markup, get_notification_days_add,
+    PaymentView, PaymentAction, MainMenuCallback, NotificationAction, NotificationDays
     )
 from utils.db import User, Payment, Notification
 
@@ -227,47 +228,34 @@ async def back_to_payment_list(call: types.CallbackQuery, state: FSMContext):
 
 
 
-@dp.message_handler(Text(contains=[Button.notifications]), state=PaymentStates.list)
-async def pre_notification_list(message: types.Message):
-    await message.reply(
-        'Напиши номер сервиса, чтобы посмотреть список нотификаций',
-        reply_markup=types.ForceReply(),
-    )
-    await PaymentStates.select.set()
-
-@dp.message_handler(Text(contains=[Button.move_back]), state=NotificationStates.list)
-async def move_back_from_notif(message: types.Message):
-    if PAYMENTS.get(message.from_user.id):
-        PAYMENTS.pop(message.from_user.id)
-    await PaymentStates.list.set()
-    await payments_list(message)
-
-@dp.message_handler(Text(contains=[Button.add_notification]), state=NotificationStates.list)
-async def pre_notification_add(message: types.Message):
-    await message.reply(
+@dp.callback_query_handler(NotificationAction.filter(action=['add']), state=PaymentStates.select)
+async def pre_notification_add(сall: types.CallbackQuery, state: FSMContext):
+    await сall.message.edit_text(
         'За сколько дней нужно уведомить тебя об оплате?',
-        reply_markup=types.ForceReply(),
+        reply_markup=get_notification_days_add(),
     )
-    await NotificationStates.add.set()
+    await state.set_state(NotificationStates.add)
 
 
-@dp.message_handler(state=NotificationStates.add)
-async def notification_add(message: types.Message):
+@dp.callback_query_handler(NotificationDays.filter(), state=NotificationStates.add)
+async def notification_add(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
+    await call.message.edit_text('Добавление...')
+    user_data = await state.get_data()
+    payment_ordered_number = user_data.get('payment_ordered_number')
+    user: User = User.get(telegram_id=call.from_user.id)
+    payment: Payment = user.get_payment_list()[payment_ordered_number]
+    day_before_notification = int(callback_data.get('id'))
     try:
-        payment: Payment = PAYMENTS.get(message.from_user.id)['payment']
-        day_before_notification = int(message.text)
         payment.add_notification(day_before_notification)
         bot_message = 'Уведомление добавлено!'
     except (TypeError, IndexError, TypeError):
         bot_message = 'Ошибка добавления уведомления, попробуйте ещё раз'
-
-    PAYMENTS.get(message.from_user.id)['timestamp'] = time.time()
-    await bot.send_message(
-        message.chat.id,
-        bot_message,
-        reply_markup=get_notifications_markup(),
+    await call.message.edit_text(
+        f'{bot_message}\n{get_payment_message(payment)}',
+        reply_markup=get_service_markup()
     )
-    await NotificationStates.list.set()
+    await state.set_state(PaymentStates.select)
+    del payment
 
 
 @dp.message_handler(Text(contains=[Button.delete_notification]),state=NotificationStates.list)
