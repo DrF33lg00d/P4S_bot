@@ -66,7 +66,7 @@ class Payment(BaseModel):
     date = DateField(default=date.today())
     user = ForeignKeyField(User, backref='payments', on_delete='CASCADE')
 
-    def get_notification_list(self) -> list[object]:
+    def get_notification_list(self) -> list['Notification']:
         notifications: Notification = (Notification.select()
                     .join(Payment)
                     .where(Payment.id == self.id)
@@ -86,9 +86,9 @@ class Payment(BaseModel):
         notification.add_job()
         return notification
 
-    def delete_notification(self, notification_number: int) -> bool:
+    def delete_notification(self, notification_day: int) -> bool:
         try:
-            notification = self.get_notification_list()[notification_number]
+            notification: Notification = list(filter(lambda n: n.day_before_payment==notification_day, self.get_notification_list()))[0]
         except IndexError:
             return False
         notification.delete_notif_job()
