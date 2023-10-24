@@ -73,17 +73,22 @@ def get_services_markup(list_services: list) -> InlineKeyboardMarkup:
     markup.add(back_button)
     return markup
 
-def get_service_markup() -> InlineKeyboardMarkup:
+def get_service_markup(has_notifications: bool = True) -> InlineKeyboardMarkup:
     markup = InlineKeyboardMarkup(2)
     buttons = [
         InlineKeyboardButton(
             'Добавить уведомление',
             callback_data=NotificationAction.new(action='add'),
         ),
-        InlineKeyboardButton(
-            'Удалить уведомление',
-            callback_data=NotificationAction.new(action='delete'),
-        ),
+    ]
+    if has_notifications:
+        buttons.append(
+            InlineKeyboardButton(
+                'Удалить уведомление',
+                callback_data=NotificationAction.new(action='delete'),
+            )
+        )
+    buttons.extend([
         InlineKeyboardButton(
             'Удалить',
             callback_data=PaymentAction.new(action='delete'),
@@ -91,19 +96,19 @@ def get_service_markup() -> InlineKeyboardMarkup:
         InlineKeyboardButton(
             'Вернуться',
             callback_data=PaymentAction.new(action='back'),
-        ),
-    ]
+        )
+    ])
     markup.add(*buttons)
     return markup
 
-def get_notification_days_add() -> InlineKeyboardMarkup:
+def get_notification_days_add(exclude_days: list[int] = list()) -> InlineKeyboardMarkup:
     markup = InlineKeyboardMarkup(5)
     buttons = [
         InlineKeyboardButton(
             i,
             callback_data=NotificationDays.new(day=i),
         )
-        for i in range(1, 11)
+        for i in range(1, 11) if i not in exclude_days
     ]
     markup.add(*buttons)
     return markup

@@ -139,7 +139,7 @@ async def move_back_from_list(call: types.CallbackQuery, state: FSMContext, call
     payment: Payment = user.get_payment_list()[payment_ordered_number]
     await call.message.edit_text(
         get_payment_message(payment),
-        reply_markup=get_service_markup()
+        reply_markup=get_service_markup(has_notifications=any(payment.get_notification_list()))
     )
     await state.set_state(PaymentStates.select)
     await state.update_data(payment_ordered_number=payment_ordered_number)
@@ -199,7 +199,7 @@ async def payment_add(message: types.Message, state: FSMContext):
         bot_message = f'Новый сервис "{payment.name}" добавлен!'
         await message.answer(
             f'{bot_message}\n{get_payment_message(payment)}',
-            reply_markup=get_service_markup(),
+            reply_markup=get_service_markup(has_notifications=any(payment.get_notification_list())),
         )
         await state.set_state(PaymentStates.select)
         del name, description, price, date_payment, user, payment
@@ -247,10 +247,16 @@ async def back_to_payment_list(call: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(NotificationAction.filter(action=['add']), state=PaymentStates.select)
-async def pre_notification_add(сall: types.CallbackQuery, state: FSMContext):
+async def pre_notification_add(сall: types.CallbackQuery, state: FSMContext, callback_data: dict):
+    user: User = User.get(telegram_id=сall.from_user.id)
+    user_data = await state.get_data()
+    payment_ordered_number = user_data.get('payment_ordered_number')
+    payment: Payment = user.get_payment_list()[payment_ordered_number]
+    notif_days: list[int] = [d.day_before_payment for d in payment.get_notification_list()]
+
     await сall.message.edit_text(
         'За сколько дней нужно уведомить тебя об оплате?',
-        reply_markup=get_notification_days_add(),
+        reply_markup=get_notification_days_add(exclude_days=notif_days),
     )
     await state.set_state(NotificationStates.add)
 
@@ -270,24 +276,25 @@ async def notification_add(call: types.CallbackQuery, state: FSMContext, callbac
         bot_message = 'Ошибка добавления уведомления, попробуйте ещё раз'
     await call.message.edit_text(
         f'{bot_message}\n{get_payment_message(payment)}',
-        reply_markup=get_service_markup()
+        reply_markup=get_service_markup(has_notifications=any(payment.get_notification_list()))
     )
     await state.set_state(PaymentStates.select)
     del payment
 
 
 @dp.callback_query_handler(NotificationAction.filter(action=['delete']), state=PaymentStates.select)
-async def pre_notification_delete(call: types.CallbackQuery, state: FSMContext):
+async def pre_notification_delete(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
     user: User = User.get(telegram_id=call.from_user.id)
     user_data = await state.get_data()
     payment_ordered_number = user_data.get('payment_ordered_number')
     payment: Payment = user.get_payment_list()[payment_ordered_number]
     notification_days = [day.day_before_payment for day in payment.get_notification_list()]
     await call.message.edit_text(
-        'Какое уведомление из списка хочешь удалить?',
+        'Уведомление за сколько дней до события ты хочешь удалить?',
         reply_markup=get_notification_days_delete(notification_days),
     )
     await state.set_state(NotificationStates.delete)
+    del payment
 
 
 @dp.callback_query_handler(NotificationDays.filter(), state=NotificationStates.delete)
@@ -305,10 +312,10 @@ async def notification_delete(call: types.CallbackQuery, state: FSMContext, call
         bot_message = 'Ошибка удаления уведомления, попробуйте ещё раз'
     except Exception as e:
         bot_message = 'Ошибка удаления уведомления, попробуйте ещё раз'
-        print(e)
+        logger.error(e, stack_info=True)
     await call.message.edit_text(
         f'{bot_message}\n{get_payment_message(payment)}',
-        reply_markup=get_service_markup()
+        reply_markup=get_service_markup(has_notifications=any(payment.get_notification_list()))
     )
     await state.set_state(PaymentStates.select)
     del payment

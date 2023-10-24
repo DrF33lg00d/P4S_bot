@@ -66,7 +66,7 @@ class Payment(BaseModel):
     date = DateField(default=date.today())
     user = ForeignKeyField(User, backref='payments', on_delete='CASCADE')
 
-    def get_notification_list(self) -> list[object]:
+    def get_notification_list(self) -> list['Notification']:
         notifications: Notification = (Notification.select()
                     .join(Payment)
                     .where(Payment.id == self.id)
