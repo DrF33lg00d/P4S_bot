@@ -30,11 +30,21 @@ def run_bot():
 @dp.message_handler(commands='start')
 async def start(message: types.Message):
     User.create_or_update(message.from_user.id, message.from_user.username)
+    logger.debug(f'User "{message.chat.id}" choose /start command')
+    await start_page(message)
+
+
+async def start_page(message: types.Message):
     user: User = User.get(telegram_id=message.from_user.id)
-    logger.debug(f'User "{user.id}" choose /start command')
     await main_menu(user, message)
     del user
 
+@dp.callback_query_handler(PaymentAction.filter(action=['back']), state=PaymentStates.list)
+async def move_back_from_list(call: types.CallbackQuery, state: FSMContext):
+    user: User = User.get(telegram_id=call.from_user.id)
+    await main_menu(user, call.message)
+    await call.message.delete()
+    await state.finish()
 
 async def main_menu(user: User, message: types.Message):
     if user and user.is_admin:
@@ -123,7 +133,7 @@ async def payments_list(call: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(PaymentView.filter(), state=PaymentStates.list)
-async def select_payment(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
+async def move_back_from_list(call: types.CallbackQuery, state: FSMContext, callback_data: dict):
     payment_ordered_number = int(callback_data.get('id'))
     user: User = User.get(telegram_id=call.from_user.id)
     payment: Payment = user.get_payment_list()[payment_ordered_number]
